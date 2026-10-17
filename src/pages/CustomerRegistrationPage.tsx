@@ -1,0 +1,445 @@
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { 
+  CheckCircle2, 
+  AlertCircle, 
+  ArrowRight, 
+  Phone, 
+  Mail, 
+  MapPin, 
+  Utensils, 
+  ShieldCheck, 
+  Loader2,
+  Share2
+} from 'lucide-react';
+import { FOOD_CATEGORIES, IJEBU_ODE_AREAS } from '../data/categories';
+import { api } from '../services/api';
+import { ContactMethod } from '../types';
+
+interface CustomerRegistrationPageProps {
+  onOpenShare?: () => void;
+}
+
+export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> = ({ onOpenShare }) => {
+  const [name, setName] = useState('');
+  const [contactMethod, setContactMethod] = useState<ContactMethod>('phone');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [neighborhood, setNeighborhood] = useState('');
+  const [customNeighborhood, setCustomNeighborhood] = useState('');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [consentAccepted, setConsentAccepted] = useState(false);
+
+  // Status
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [successData, setSuccessData] = useState<{ registrationId?: string; message: string } | null>(null);
+
+  const toggleCategory = (catName: string) => {
+    if (selectedCategories.includes(catName)) {
+      setSelectedCategories(selectedCategories.filter(c => c !== catName));
+    } else {
+      setSelectedCategories([...selectedCategories, catName]);
+    }
+  };
+
+  const validate = () => {
+    const errors: Record<string, string> = {};
+
+    if (!name.trim() || name.trim().length < 2) {
+      errors.name = 'Please enter your full name (at least 2 letters).';
+    }
+
+    if (contactMethod === 'phone') {
+      const cleanPhone = phone.trim().replace(/\s+/g, '');
+      if (!cleanPhone || cleanPhone.length < 10) {
+        errors.phone = 'Please enter a valid Nigerian phone or WhatsApp number.';
+      }
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!email.trim() || !emailRegex.test(email.trim())) {
+        errors.email = 'Please enter a valid email address.';
+      }
+    }
+
+    const finalNeighborhood = neighborhood === 'Other Neighborhood in Ijebu Ode' ? customNeighborhood : neighborhood;
+    if (!finalNeighborhood.trim()) {
+      errors.neighborhood = 'Please select or enter your area in Ijebu Ode.';
+    }
+
+    if (!consentAccepted) {
+      errors.consent = 'You must accept the privacy notice to be contacted.';
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setApiError(null);
+
+    if (!validate()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const finalNeighborhood = neighborhood === 'Other Neighborhood in Ijebu Ode' 
+      ? customNeighborhood.trim() 
+      : neighborhood.trim();
+
+    try {
+      const res = await api.registerCustomer({
+        name: name.trim(),
+        contactMethod,
+        phone: contactMethod === 'phone' ? phone.trim() : undefined,
+        email: contactMethod === 'email' ? email.trim() : undefined,
+        neighborhood: finalNeighborhood,
+        favoriteCategories: selectedCategories,
+        consentAccepted
+      });
+
+      if (res.success) {
+        setSuccessData({
+          registrationId: res.registrationId,
+          message: res.message || 'You have successfully joined the wá jẹun Launch List.'
+        });
+      } else {
+        setApiError(res.error || 'Registration could not be completed. Please try again.');
+      }
+    } catch (err) {
+      setApiError('A connection problem occurred. Please check your network and retry.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Success view
+  if (successData) {
+    return (
+      <div className="min-h-screen bg-[#FFF8E9] py-16 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-xl mx-auto bg-white rounded-2xl border border-[#123B2A]/10 shadow-lg p-8 sm:p-10 text-center space-y-6">
+          <div className="w-16 h-16 bg-[#B8D94B]/20 text-[#123B2A] rounded-2xl flex items-center justify-center mx-auto">
+            <CheckCircle2 className="w-10 h-10 text-[#123B2A]" />
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-[#123B2A]">
+              You're on the launch list!
+            </h1>
+            <p className="text-sm sm:text-base text-[#20231F]/80 leading-relaxed">
+              {successData.message}
+            </p>
+          </div>
+
+          <div className="bg-[#FFF8E9] p-5 rounded-xl border border-[#123B2A]/10 text-left space-y-2 text-xs sm:text-sm text-[#20231F]/80">
+            <div className="font-bold text-[#123B2A] flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-[#123B2A]" />
+              <span>What happens next?</span>
+            </div>
+            <p className="leading-relaxed">
+              We are working directly with food businesses and bukas in Ijebu Ode. Once vendors in your area (<strong>{neighborhood === 'Other Neighborhood in Ijebu Ode' ? customNeighborhood : neighborhood}</strong>) complete onboarding, we will reach out to you via your preferred channel (<strong>{contactMethod === 'phone' ? 'WhatsApp/Phone' : 'Email'}</strong>).
+            </p>
+            {successData.registrationId && (
+              <p className="text-[11px] text-slate-500 pt-2 border-t border-[#123B2A]/10 font-mono">
+                Reference ID: {successData.registrationId}
+              </p>
+            )}
+          </div>
+
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+            {onOpenShare && (
+              <button
+                type="button"
+                onClick={onOpenShare}
+                className="w-full sm:w-auto min-h-[44px] px-6 py-2.5 text-xs font-bold text-[#123B2A] bg-[#B8D94B] hover:bg-[#a7c93e] rounded-xl flex items-center justify-center gap-2"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>Tell Friends in Ijebu Ode</span>
+              </button>
+            )}
+            <Link
+              to="/explore"
+              className="w-full sm:w-auto min-h-[44px] px-6 py-2.5 text-xs font-bold text-[#123B2A] bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center justify-center gap-1.5"
+            >
+              <span>Explore Food Preview</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#FFF8E9] py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-2xl mx-auto space-y-8">
+        
+        {/* Breadcrumb & Context */}
+        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-[#20231F]/60">
+          <Link to="/" className="hover:text-[#123B2A] transition-colors">Home</Link>
+          <span className="text-slate-400">/</span>
+          <span className="text-[#123B2A] font-semibold">Customer Launch List</span>
+        </nav>
+
+        {/* Header */}
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#123B2A]/5 text-[#123B2A] text-xs font-semibold">
+            <MapPin className="w-3.5 h-3.5 text-[#123B2A]" />
+            <span>Ijebu Ode Customer Early Access</span>
+          </div>
+
+          <h1 className="font-display text-3xl sm:text-4xl font-extrabold text-[#123B2A] tracking-tight">
+            Be first in line for good food.
+          </h1>
+
+          <p className="text-sm sm:text-base text-[#20231F]/80 max-w-lg mx-auto leading-relaxed">
+            Register your interest in wá jẹun and hear when local food discovery and ordering become available in Ijebu Ode.
+          </p>
+        </div>
+
+        {/* Cross-Audience Switcher Banner */}
+        <div className="p-3.5 rounded-xl bg-white border border-[#123B2A]/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-xs">
+          <span className="text-[#20231F]/80 font-medium">
+            Are you a restaurant, buka, or caterer looking to join our founding vendor cohort?
+          </span>
+          <Link
+            to="/vendor-register"
+            className="text-xs font-bold text-[#123B2A] hover:underline whitespace-nowrap shrink-0 flex items-center gap-1"
+          >
+            <span>Register Food Business</span>
+            <ArrowRight className="w-3 h-3" />
+          </Link>
+        </div>
+
+        {/* Registration Card */}
+        <div className="bg-white rounded-2xl border border-[#123B2A]/10 shadow-sm p-6 sm:p-10 space-y-6">
+          
+          {apiError && (
+            <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3 text-xs sm:text-sm text-red-800">
+              <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-bold">Submission Failed</p>
+                <p>{apiError}</p>
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+            
+            {/* 1. Full Name */}
+            <div className="space-y-1.5">
+              <label htmlFor="customer-name" className="block text-xs font-bold uppercase tracking-wider text-[#123B2A]">
+                Full Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="customer-name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Oluwaseun Adeleke"
+                className={`w-full px-4 py-3 text-sm bg-slate-50 border rounded-xl text-[#20231F] focus:outline-none focus:ring-2 focus:ring-[#123B2A] focus:bg-white transition-all ${
+                  fieldErrors.name ? 'border-red-400 bg-red-50/50' : 'border-slate-200'
+                }`}
+              />
+              {fieldErrors.name && (
+                <p className="text-xs text-red-600 font-medium">{fieldErrors.name}</p>
+              )}
+            </div>
+
+            {/* 2. Contact Method Choice */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#123B2A]">
+                Preferred Contact Channel <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setContactMethod('phone')}
+                  className={`min-h-[44px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                    contactMethod === 'phone'
+                      ? 'bg-[#123B2A] text-white border-[#123B2A]'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <Phone className="w-4 h-4" />
+                  <span>WhatsApp / Phone</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setContactMethod('email')}
+                  className={`min-h-[44px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                    contactMethod === 'email'
+                      ? 'bg-[#123B2A] text-white border-[#123B2A]'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <Mail className="w-4 h-4" />
+                  <span>Email Address</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 3. Phone or Email Input */}
+            {contactMethod === 'phone' ? (
+              <div className="space-y-1.5">
+                <label htmlFor="customer-phone" className="block text-xs font-bold uppercase tracking-wider text-[#123B2A]">
+                  WhatsApp or Phone Number <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="customer-phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="e.g. 0803 123 4567 or +234 803 123 4567"
+                  className={`w-full px-4 py-3 text-sm bg-slate-50 border rounded-xl text-[#20231F] focus:outline-none focus:ring-2 focus:ring-[#123B2A] focus:bg-white transition-all ${
+                    fieldErrors.phone ? 'border-red-400 bg-red-50/50' : 'border-slate-200'
+                  }`}
+                />
+                <p className="text-[11px] text-slate-500">
+                  We'll only message you about the wá jẹun rollout in Ijebu Ode.
+                </p>
+                {fieldErrors.phone && (
+                  <p className="text-xs text-red-600 font-medium">{fieldErrors.phone}</p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <label htmlFor="customer-email" className="block text-xs font-bold uppercase tracking-wider text-[#123B2A]">
+                  Email Address <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="customer-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="e.g. seun@example.com"
+                  className={`w-full px-4 py-3 text-sm bg-slate-50 border rounded-xl text-[#20231F] focus:outline-none focus:ring-2 focus:ring-[#123B2A] focus:bg-white transition-all ${
+                    fieldErrors.email ? 'border-red-400 bg-red-50/50' : 'border-slate-200'
+                  }`}
+                />
+                {fieldErrors.email && (
+                  <p className="text-xs text-red-600 font-medium">{fieldErrors.email}</p>
+                )}
+              </div>
+            )}
+
+            {/* 4. Neighborhood / Area */}
+            <div className="space-y-1.5">
+              <label htmlFor="customer-area" className="block text-xs font-bold uppercase tracking-wider text-[#123B2A]">
+                Neighborhood in Ijebu Ode <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="customer-area"
+                value={neighborhood}
+                onChange={(e) => setNeighborhood(e.target.value)}
+                className={`w-full px-4 py-3 text-sm bg-slate-50 border rounded-xl text-[#20231F] focus:outline-none focus:ring-2 focus:ring-[#123B2A] focus:bg-white transition-all ${
+                  fieldErrors.neighborhood ? 'border-red-400 bg-red-50/50' : 'border-slate-200'
+                }`}
+              >
+                <option value="">Select your area...</option>
+                {IJEBU_ODE_AREAS.map((area) => (
+                  <option key={area} value={area}>{area}</option>
+                ))}
+              </select>
+
+              {neighborhood === 'Other Neighborhood in Ijebu Ode' && (
+                <input
+                  type="text"
+                  value={customNeighborhood}
+                  onChange={(e) => setCustomNeighborhood(e.target.value)}
+                  placeholder="Specify your neighborhood in Ijebu Ode"
+                  className="w-full mt-2 px-4 py-2.5 text-sm bg-white border border-slate-200 rounded-xl text-[#20231F] focus:outline-none focus:ring-2 focus:ring-[#123B2A]"
+                />
+              )}
+
+              {fieldErrors.neighborhood && (
+                <p className="text-xs text-red-600 font-medium">{fieldErrors.neighborhood}</p>
+              )}
+            </div>
+
+            {/* 5. Optional Favorite Food Categories */}
+            <div className="space-y-2 pt-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#123B2A]">
+                Food Categories You Love (Optional)
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {FOOD_CATEGORIES.map((cat) => {
+                  const isSelected = selectedCategories.includes(cat.name);
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => toggleCategory(cat.name)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                        isSelected
+                          ? 'bg-[#123B2A] text-white border-[#123B2A]'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 6. Consent Checkbox */}
+            <div className="pt-2">
+              <label className="flex items-start gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={consentAccepted}
+                  onChange={(e) => setConsentAccepted(e.target.checked)}
+                  className="w-4 h-4 mt-0.5 rounded text-[#123B2A] focus:ring-[#123B2A] border-slate-300"
+                />
+                <span className="text-xs text-[#20231F]/80 leading-relaxed">
+                  I agree to wá jẹun's{' '}
+                  <Link to="/legal?tab=privacy" target="_blank" className="font-semibold text-[#123B2A] underline">
+                    Privacy Notice
+                  </Link>{' '}
+                  and consent to being contacted about the launch in Ijebu Ode.
+                </span>
+              </label>
+              {fieldErrors.consent && (
+                <p className="text-xs text-red-600 font-medium mt-1">{fieldErrors.consent}</p>
+              )}
+            </div>
+
+            {/* 7. Submit Action */}
+            <div className="pt-4">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full min-h-[48px] px-6 py-3.5 text-base font-bold text-[#123B2A] bg-[#B8D94B] hover:bg-[#a7c93e] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Recording Your Early Access...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Join the Launch List</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="text-center pt-2">
+              <p className="text-[11px] text-slate-500">
+                🔒 We will never spam or sell your information. No password required.
+              </p>
+            </div>
+
+          </form>
+        </div>
+
+      </div>
+    </div>
+  );
+};

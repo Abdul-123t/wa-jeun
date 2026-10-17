@@ -1,0 +1,8 @@
+{
+  "name": "WA JEUN",
+  "description": "wá jẹun — Your City. Your Food. A premium, mobile-first Nigerian food marketplace beginning in Ijebu Ode, Ogun State, Nigeria.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
