@@ -1,7 +1,7 @@
-import express, { Request, Response } from 'express';
+import 'dotenv/config';
+import express, { ErrorRequestHandler, Request, RequestHandler, Response } from 'express';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
+import { fileURLToPath, pathToFileURL } from 'url';
 import {
   normalizeNigerianPhone,
   normalizeEmail,
@@ -12,23 +12,72 @@ import {
   VALID_ORDERING_METHODS
 } from './src/server/validation';
 import { createRateLimiter } from './src/server/rateLimiter';
+import { configureClientIpTrust } from './src/server/clientIp';
 import {
   insertCustomerInterest,
   insertVendorInterest,
   insertContactInquiry,
   getVerifiedVendors,
+  getPublicVendorMenu,
   getHealthStats,
-  getStorageMode
+  getStorageMode,
+  verifySupabaseAccessToken,
+  getVendorApplicationsForUser,
+  isAdminUser,
+  getAdminVendorApplications,
+  getAdminVendorApplication,
+  reviewVendorApplication,
+  VendorReviewAction,
+  getVendorDashboard,
+  updateVendorProfile,
+  setVendorAvailability,
+  saveVendorMenuItem,
+  deleteVendorMenuItem,
+  uploadVendorMenuImage,
+  createCustomerOrder,
+  getCustomerOrders,
+  getVendorOrders,
+  transitionVendorOrder
 } from './src/server/db';
-
-dotenv.config();
+import { authorizeAdminHeader, parseBearerAuthorization } from './src/server/authTokens';
+import { FULFILLMENT_OPTIONS, MENU_CATEGORIES, isTrustedMenuImageUrl, validateMenuItem, validateOpeningHours } from './src/server/vendorRules';
+import { parseCheckoutLines, validateCheckoutContact, validateFulfillment } from './src/server/orderRules';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const app = express();
+export const app = express();
+configureClientIpTrust(app, process.env);
 const PORT = Number(process.env.PORT) || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
+const isDevelopment = process.env.NODE_ENV === 'development';
+
+function asyncRoute(handler: (req: Request, res: Response) => Promise<unknown>): RequestHandler {
+  return (req, res, next) => { void handler(req, res).catch(next); };
+}
+
+async function authorizeAdminRequest(req: Request): Promise<
+  { userId: string; error?: never; statusCode?: never } |
+  { userId?: never; error: string; statusCode: number }
+> {
+  return authorizeAdminHeader(req.get('authorization'), verifySupabaseAccessToken, isAdminUser);
+}
+
+async function verifiedVendorUser(req: Request) {
+  const authorization = parseBearerAuthorization(req.get('authorization'));
+  if (!authorization.token) return { error: 'Sign in to manage your business.', statusCode: 401 } as const;
+  const verified = await verifySupabaseAccessToken(authorization.token);
+  if (!verified.success || !verified.data) return { error: verified.error || 'Your session is invalid or expired.', statusCode: verified.statusCode || 401 } as const;
+  return { userId: verified.data.userId } as const;
+}
+
+async function verifiedCustomerUser(req: Request) {
+  const authorization = parseBearerAuthorization(req.get('authorization'));
+  if (!authorization.token) return { error: 'Sign in to continue.', statusCode: 401 } as const;
+  const verified = await verifySupabaseAccessToken(authorization.token);
+  if (!verified.success || !verified.data) return { error: verified.error || 'Your session is invalid or expired.', statusCode: verified.statusCode || 401 } as const;
+  return { userId: verified.data.userId } as const;
+}
 
 // Security: Enforce tight request body size limit (50kb for form submissions)
 app.use(express.json({ limit: '50kb' }));
@@ -42,18 +91,28 @@ app.use((_req, res, next) => {
   next();
 });
 
-// Abuse Prevention: Rate limiter for public submission endpoints
-// 15 submissions per 10 minutes per IP
-const submissionLimiter = createRateLimiter({
+// Abuse prevention limits are independent by endpoint and shared across
+// instances only when a shared store is added; see deployment documentation.
+const createSubmissionLimiter = (key: string) => createRateLimiter({
+  key,
   windowMs: 10 * 60 * 1000,
   max: 15,
   message: 'Too many submissions from this connection. Please wait a few minutes before trying again.'
 });
+const customerOrderLimiter = createSubmissionLimiter('customer-orders');
+const customerInterestLimiter = createSubmissionLimiter('customer-interest');
+const vendorApplicationLimiter = createSubmissionLimiter('vendor-applications');
+const contactInquiryLimiter = createSubmissionLimiter('contact-inquiries');
 
 // 1. Health check & configuration status
 app.get('/api/health', async (_req: Request, res: Response) => {
   try {
     const stats = await getHealthStats();
+    const message = stats.status !== 'online'
+      ? 'Database health check is temporarily unavailable.'
+      : stats.storageMode === 'dev-local-json'
+        ? 'Backend is operating with local development storage.'
+        : 'wá jẹun backend is operating with persistent database storage.';
     res.json({
       status: stats.status,
       market: 'Ijebu Ode, Ogun State, Nigeria',
@@ -63,7 +122,7 @@ app.get('/api/health', async (_req: Request, res: Response) => {
         registeredCustomers: stats.registeredCustomers,
         registeredVendors: stats.registeredVendors
       },
-      message: 'wá jẹun backend is operating and storing interest registrations truthfully.'
+      message
     });
   } catch (err: any) {
     res.status(500).json({
@@ -76,44 +135,282 @@ app.get('/api/health', async (_req: Request, res: Response) => {
   }
 });
 
+// Every admin API request independently verifies the Supabase token and checks
+// server-side admin membership. No browser-supplied identity or role is used.
+app.get('/api/admin/access', asyncRoute(async (req: Request, res: Response) => {
+  res.set('Cache-Control', 'no-store');
+  const authorization = await authorizeAdminRequest(req);
+  if (!authorization.userId) {
+    return res.status(authorization.statusCode || 401).json({ success: false, error: authorization.error });
+  }
+  return res.json({ success: true, isAdmin: true });
+}));
+
+app.get('/api/admin/vendor-applications', asyncRoute(async (req: Request, res: Response) => {
+  res.set('Cache-Control', 'no-store');
+  const authorization = await authorizeAdminRequest(req);
+  if (!authorization.userId) {
+    return res.status(authorization.statusCode || 401).json({ success: false, error: authorization.error });
+  }
+
+  const result = await getAdminVendorApplications();
+  if (!result.success) return res.status(result.statusCode || 503).json({ success: false, error: result.error });
+
+  const allowedStatuses = new Set(['pending_review', 'under_review', 'contacted', 'approved', 'declined']);
+  const status = typeof req.query.status === 'string' ? req.query.status : 'all';
+  if (status !== 'all' && !allowedStatuses.has(status)) {
+    return res.status(400).json({ success: false, error: 'Choose a valid application status filter.' });
+  }
+  const search = typeof req.query.search === 'string' ? sanitizeText(req.query.search, 100).toLocaleLowerCase() : '';
+  const applications = (result.data || []).filter(application =>
+    (status === 'all' || application.status === status) &&
+    (!search || `${application.business_name} ${application.neighborhood} ${application.business_type}`.toLocaleLowerCase().includes(search))
+  );
+  return res.json({ success: true, applications });
+}));
+
+// Vendor dashboard data is always scoped to the Supabase identity verified here.
+app.get('/api/vendor/dashboard', asyncRoute(async (req: Request, res: Response) => {
+  res.set('Cache-Control', 'no-store');
+  const authorization = await verifiedVendorUser(req);
+  if (!authorization.userId) return res.status(authorization.statusCode || 401).json({ success: false, error: authorization.error });
+  const result = await getVendorDashboard(authorization.userId);
+  if (!result.success) return res.status(result.statusCode || 503).json({ success: false, error: result.error });
+  return res.json({ success: true, businesses: result.data });
+}));
+
+app.patch('/api/vendor/businesses/:businessId/profile', asyncRoute(async (req: Request, res: Response) => {
+  const authorization = await verifiedVendorUser(req);
+  if (!authorization.userId) return res.status(authorization.statusCode || 401).json({ success: false, error: authorization.error });
+  const { description, neighborhood, openingHours, fulfillmentOptions, deliveryFeeNgn } = req.body || {};
+  const cleanDescription = sanitizeText(description, 1000);
+  const cleanNeighborhood = sanitizeText(neighborhood, 150);
+  if (cleanDescription.length < 20 || !cleanNeighborhood || !validateOpeningHours(openingHours) || !FULFILLMENT_OPTIONS.includes(fulfillmentOptions) || (deliveryFeeNgn !== null && deliveryFeeNgn !== undefined && (typeof deliveryFeeNgn !== 'number' || !Number.isFinite(deliveryFeeNgn) || deliveryFeeNgn < 0 || deliveryFeeNgn > 10000000 || Math.round(deliveryFeeNgn * 100) !== deliveryFeeNgn * 100))) {
+    return res.status(400).json({ success: false, error: 'Add a description, neighborhood, valid hours and fulfillment option, plus a valid optional delivery fee.' });
+  }
+  const result = await updateVendorProfile(authorization.userId, req.params.businessId, { description: cleanDescription, neighborhood: cleanNeighborhood, openingHours, fulfillmentOptions, deliveryFeeNgn: deliveryFeeNgn ?? null });
+  if (!result.success) return res.status(result.statusCode || 503).json({ success: false, error: result.error });
+  return res.json({ success: true, business: result.data });
+}));
+
+app.get('/api/customer/orders', asyncRoute(async (req: Request, res: Response) => {
+  res.set('Cache-Control', 'no-store');
+  const authorization = await verifiedCustomerUser(req);
+  if (!authorization.userId) return res.status(authorization.statusCode || 401).json({ success: false, error: authorization.error });
+  const result = await getCustomerOrders(authorization.userId);
+  if (!result.success) return res.status(result.statusCode || 503).json({ success: false, error: result.error });
+  return res.json({ success: true, orders: result.data });
+}));
+
+app.post('/api/customer/orders', customerOrderLimiter, asyncRoute(async (req: Request, res: Response) => {
+  res.set('Cache-Control', 'no-store');
+  const authorization = await verifiedCustomerUser(req);
+  if (!authorization.userId) return res.status(authorization.statusCode || 401).json({ success: false, error: authorization.error });
+  if (!isDevelopment) return res.status(503).json({ success: false, error: 'Real checkout is not enabled. Development test orders are available only when NODE_ENV=development; payment, settlement, refunds, and collection policies must be configured before production orders can be accepted.' });
+  const lines = parseCheckoutLines(req.body?.items);
+  if (!lines.success) return res.status(400).json({ success: false, error: lines.error });
+  const contact = validateCheckoutContact(req.body?.customerName, req.body?.customerPhone);
+  if (!contact.success) return res.status(400).json({ success: false, error: contact.error });
+  const fulfillment = validateFulfillment(req.body?.fulfillmentMethod, req.body?.deliveryAddress, ['pickup_only', 'vendor_delivery', 'pickup_and_delivery', 'delivery_varies']);
+  if (!fulfillment.success) return res.status(400).json({ success: false, error: fulfillment.error });
+  if (typeof req.body?.idempotencyKey !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(req.body.idempotencyKey)) return res.status(400).json({ success: false, error: 'Refresh checkout and try again.' });
+  const result = await createCustomerOrder({ customerUserId: authorization.userId, customerName: contact.customerName, customerPhone: contact.customerPhone,
+    fulfillmentMethod: fulfillment.fulfillmentMethod as 'pickup' | 'vendor_delivery', deliveryAddress: fulfillment.deliveryAddress, lines: lines.lines,
+    idempotencyKey: req.body.idempotencyKey, isTestOrder: true });
+  if (!result.success) return res.status(result.statusCode || 503).json({ success: false, error: result.error });
+  return res.status(result.data.created ? 201 : 200).json({ success: true, order: result.data });
+}));
+
+app.get('/api/vendor/orders', asyncRoute(async (req: Request, res: Response) => {
+  res.set('Cache-Control', 'no-store');
+  const authorization = await verifiedVendorUser(req);
+  if (!authorization.userId) return res.status(authorization.statusCode || 401).json({ success: false, error: authorization.error });
+  const businessId = typeof req.query.businessId === 'string' ? req.query.businessId : undefined;
+  const result = await getVendorOrders(authorization.userId, businessId);
+  if (!result.success) return res.status(result.statusCode || 503).json({ success: false, error: result.error });
+  return res.json({ success: true, orders: result.data });
+}));
+
+app.patch('/api/vendor/orders/:orderId/status', asyncRoute(async (req: Request, res: Response) => {
+  const authorization = await verifiedVendorUser(req);
+  if (!authorization.userId) return res.status(authorization.statusCode || 401).json({ success: false, error: authorization.error });
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(req.params.orderId)) return res.status(400).json({ success: false, error: 'Invalid order reference.' });
+  const statuses = ['accepted', 'rejected', 'preparing', 'ready_for_pickup', 'out_for_delivery', 'completed'];
+  if (typeof req.body?.status !== 'string' || !statuses.includes(req.body.status)) return res.status(400).json({ success: false, error: 'Choose a supported order status.' });
+  const result = await transitionVendorOrder(authorization.userId, req.params.orderId, req.body.status);
+  if (!result.success) return res.status(result.statusCode || 503).json({ success: false, error: result.error });
+  return res.json({ success: true, order: result.data });
+}));
+
+app.patch('/api/vendor/businesses/:businessId/availability', asyncRoute(async (req: Request, res: Response) => {
+  const authorization = await verifiedVendorUser(req);
+  if (!authorization.userId) return res.status(authorization.statusCode || 401).json({ success: false, error: authorization.error });
+  if (typeof req.body?.acceptingOrders !== 'boolean') return res.status(400).json({ success: false, error: 'Choose whether your business is accepting orders.' });
+  const result = await setVendorAvailability(authorization.userId, req.params.businessId, req.body.acceptingOrders);
+  if (!result.success) return res.status(result.statusCode || 503).json({ success: false, error: result.error });
+  return res.json({ success: true, ...result.data });
+}));
+
+app.post('/api/vendor/businesses/:businessId/menu', asyncRoute(async (req: Request, res: Response) => {
+  const authorization = await verifiedVendorUser(req);
+  if (!authorization.userId) return res.status(authorization.statusCode || 401).json({ success: false, error: authorization.error });
+  const issue = validateMenuItem(req.body || {});
+  if (issue) return res.status(400).json({ success: false, error: issue });
+  if (req.body.imageUrl && !isTrustedMenuImageUrl(req.body.imageUrl, process.env.SUPABASE_URL || '')) return res.status(400).json({ success: false, error: 'Food images must use the wá jẹun menu image upload.' });
+  const result = await saveVendorMenuItem(authorization.userId, req.params.businessId, null, req.body);
+  if (!result.success) return res.status(result.statusCode || 503).json({ success: false, error: result.error });
+  return res.status(201).json({ success: true, item: result.data });
+}));
+
+app.patch('/api/vendor/businesses/:businessId/menu/:itemId', asyncRoute(async (req: Request, res: Response) => {
+  const authorization = await verifiedVendorUser(req);
+  if (!authorization.userId) return res.status(authorization.statusCode || 401).json({ success: false, error: authorization.error });
+  const issue = validateMenuItem(req.body || {});
+  if (issue) return res.status(400).json({ success: false, error: issue });
+  if (req.body.imageUrl && !isTrustedMenuImageUrl(req.body.imageUrl, process.env.SUPABASE_URL || '')) return res.status(400).json({ success: false, error: 'Food images must use the wá jẹun menu image upload.' });
+  const result = await saveVendorMenuItem(authorization.userId, req.params.businessId, req.params.itemId, req.body);
+  if (!result.success) return res.status(result.statusCode || 503).json({ success: false, error: result.error });
+  return res.json({ success: true, item: result.data });
+}));
+
+app.delete('/api/vendor/businesses/:businessId/menu/:itemId', asyncRoute(async (req: Request, res: Response) => {
+  const authorization = await verifiedVendorUser(req);
+  if (!authorization.userId) return res.status(authorization.statusCode || 401).json({ success: false, error: authorization.error });
+  const result = await deleteVendorMenuItem(authorization.userId, req.params.businessId, req.params.itemId);
+  if (!result.success) return res.status(result.statusCode || 503).json({ success: false, error: result.error });
+  return res.json({ success: true });
+}));
+
+app.post('/api/vendor/businesses/:businessId/menu-image', express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '5mb' }), asyncRoute(async (req: Request, res: Response) => {
+  const authorization = await verifiedVendorUser(req);
+  if (!authorization.userId) return res.status(authorization.statusCode || 401).json({ success: false, error: authorization.error });
+  if (!Buffer.isBuffer(req.body) || !req.body.length) return res.status(400).json({ success: false, error: 'Upload a JPEG, PNG, or WebP food image.' });
+  const result = await uploadVendorMenuImage(authorization.userId, req.params.businessId, req.get('content-type') || '', req.body);
+  if (!result.success) return res.status(result.statusCode || 503).json({ success: false, error: result.error });
+  return res.json({ success: true, ...result.data });
+}));
+
+app.get('/api/admin/vendor-applications/:id', asyncRoute(async (req: Request, res: Response) => {
+  res.set('Cache-Control', 'no-store');
+  const authorization = await authorizeAdminRequest(req);
+  if (!authorization.userId) {
+    return res.status(authorization.statusCode || 401).json({ success: false, error: authorization.error });
+  }
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(req.params.id)) {
+    return res.status(400).json({ success: false, error: 'Invalid application ID.' });
+  }
+
+  const result = await getAdminVendorApplication(req.params.id);
+  if (!result.success) return res.status(result.statusCode || 503).json({ success: false, error: result.error });
+  return res.json({ success: true, ...result.data });
+}));
+
+app.post('/api/admin/vendor-applications/:id/review', asyncRoute(async (req: Request, res: Response) => {
+  res.set('Cache-Control', 'no-store');
+  const authorization = await authorizeAdminRequest(req);
+  if (!authorization.userId) {
+    return res.status(authorization.statusCode || 401).json({ success: false, error: authorization.error });
+  }
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(req.params.id)) {
+    return res.status(400).json({ success: false, error: 'Invalid application ID.' });
+  }
+
+  const actions: VendorReviewAction[] = ['under_review', 'approve', 'reject', 'request_information'];
+  const action = req.body?.action;
+  const reason = req.body?.reason;
+  if (!actions.includes(action)) {
+    return res.status(400).json({ success: false, error: 'Choose a valid review action.' });
+  }
+  if (reason !== undefined && (typeof reason !== 'string' || reason.length > 1000)) {
+    return res.status(400).json({ success: false, error: 'Review notes must be 1,000 characters or fewer.' });
+  }
+  if (['reject', 'request_information'].includes(action) && !String(reason || '').trim()) {
+    return res.status(400).json({ success: false, error: 'Add a reason before rejecting or requesting more information.' });
+  }
+
+  const result = await reviewVendorApplication(req.params.id, authorization.userId, action, typeof reason === 'string' ? reason.trim() || null : null);
+  if (!result.success) return res.status(result.statusCode || 503).json({ success: false, error: result.error });
+  return res.json({ success: true, application: result.data });
+}));
+
 // 2. Truthful vendor discovery endpoint - strictly verified/approved vendors only
 // (0 verified vendors at pre-launch; no fictional businesses)
 app.get('/api/vendors', async (req: Request, res: Response) => {
-  const { category, search } = req.query;
+  res.set('Cache-Control', 'no-store');
+  const { category, search, neighborhood, fulfillment } = req.query;
 
   try {
-    const filterCat = category && typeof category === 'string' ? sanitizeText(category, 50) : undefined;
+    const filterCats = category && typeof category === 'string'
+      ? [...new Set(category.split(',').map(value => sanitizeText(value, 50)).filter(Boolean))]
+      : [];
+    if (filterCats.some(value => !MENU_CATEGORIES.includes(value as typeof MENU_CATEGORIES[number]))) {
+      return res.status(400).json({ success: false, error: 'Choose a supported food category.' });
+    }
     const filterSearch = search && typeof search === 'string' ? sanitizeText(search, 100) : undefined;
+    const filterNeighborhood = neighborhood && typeof neighborhood === 'string' ? sanitizeText(neighborhood, 150) : undefined;
+    const filterFulfillment = fulfillment === 'pickup' || fulfillment === 'delivery' ? fulfillment : undefined;
+    if (fulfillment && (typeof fulfillment !== 'string' || !['pickup', 'delivery'].includes(fulfillment))) {
+      return res.status(400).json({ success: false, error: 'Choose pickup or vendor-managed delivery.' });
+    }
 
     const result = await getVerifiedVendors({
-      category: filterCat,
-      search: filterSearch
+      categories: filterCats,
+      search: filterSearch,
+      neighborhood: filterNeighborhood,
+      fulfillment: filterFulfillment
     });
+    if (!result.success) return res.status(result.statusCode).json({ success: false, error: result.error });
 
     res.json({
+      success: true,
       vendors: result.vendors,
       total: result.total,
       filtersApplied: {
-        category: filterCat || null,
-        search: filterSearch || null
+        categories: filterCats,
+        search: filterSearch || null,
+        neighborhood: filterNeighborhood || null,
+        fulfillment: filterFulfillment || null
       },
-      status: 'pre_launch',
+      status: result.total === 0 ? 'empty' : 'available',
       message: result.total === 0
-        ? "We're preparing wá jẹun's first food marketplace in Ijebu Ode. Verified food business listings will appear as local businesses are officially onboarded."
+        ? 'No approved food businesses match those filters right now.'
         : 'Displaying verified food businesses in Ijebu Ode.'
     });
-  } catch (err) {
-    res.status(500).json({
-      vendors: [],
-      total: 0,
-      status: 'error',
-      message: 'Unable to retrieve vendor listings.'
-    });
+  } catch {
+    res.status(503).json({ success: false, error: 'The food directory is temporarily unavailable. Please try again.' });
   }
 });
 
+app.get('/api/vendors/:businessId/menu', asyncRoute(async (req: Request, res: Response) => {
+  res.set('Cache-Control', 'no-store');
+  const result = await getPublicVendorMenu(req.params.businessId);
+  if (!result.success) return res.status(result.statusCode || 503).json({ success: false, error: result.error });
+  return res.json({ success: true, vendor: result.data });
+}));
+
+// Authenticated vendor applicants can view only applications owned by their
+// verified Supabase user ID. The client never supplies an authoritative user ID.
+app.get('/api/account/vendor-applications', asyncRoute(async (req: Request, res: Response) => {
+  res.set('Cache-Control', 'no-store');
+  const authorization = parseBearerAuthorization(req.get('authorization'));
+  if (!authorization.token) {
+    return res.status(401).json({ success: false, error: 'Sign in to view your account.' });
+  }
+
+  const verified = await verifySupabaseAccessToken(authorization.token);
+  if (!verified.success || !verified.data) {
+    return res.status(verified.statusCode || 401).json({ success: false, error: verified.error });
+  }
+
+  const result = await getVendorApplicationsForUser(verified.data.userId);
+  if (!result.success) {
+    return res.status(result.statusCode || 500).json({ success: false, error: result.error });
+  }
+  return res.json({ success: true, applications: result.data || [] });
+}));
+
 // 3. Customer Early Access Registration Endpoint
-app.post('/api/interest/customer', submissionLimiter, async (req: Request, res: Response) => {
+app.post('/api/interest/customer', customerInterestLimiter, async (req: Request, res: Response) => {
   try {
     const {
       name,
@@ -221,7 +518,7 @@ app.post('/api/interest/customer', submissionLimiter, async (req: Request, res: 
 });
 
 // 4. Food Business Onboarding Interest Registration Endpoint
-app.post('/api/interest/vendor', submissionLimiter, async (req: Request, res: Response) => {
+app.post('/api/interest/vendor', vendorApplicationLimiter, async (req: Request, res: Response) => {
   try {
     const {
       businessName,
@@ -313,6 +610,19 @@ app.post('/api/interest/vendor', submissionLimiter, async (req: Request, res: Re
 
     const cleanMessage = sanitizeText(message, 1000);
 
+    const authorization = parseBearerAuthorization(req.get('authorization'));
+    if (authorization.provided && !authorization.token) {
+      return res.status(401).json({ success: false, error: 'Your session is invalid or expired.' });
+    }
+    let ownerUserId: string | null = null;
+    if (authorization.token) {
+      const verified = await verifySupabaseAccessToken(authorization.token);
+      if (!verified.success || !verified.data) {
+        return res.status(verified.statusCode || 401).json({ success: false, error: verified.error });
+      }
+      ownerUserId = verified.data.userId;
+    }
+
     // Persistent Database Insertion
     const dbResult = await insertVendorInterest({
       business_name: cleanBizName,
@@ -325,7 +635,7 @@ app.post('/api/interest/vendor', submissionLimiter, async (req: Request, res: Re
       fulfillment_options: fulfillmentOptions,
       message: cleanMessage || null,
       consent_accepted: true
-    });
+    }, ownerUserId);
 
     if (!dbResult.success) {
       return res.status(dbResult.statusCode || 500).json({
@@ -349,7 +659,7 @@ app.post('/api/interest/vendor', submissionLimiter, async (req: Request, res: Re
 });
 
 // 5. Contact Inquiries Endpoint
-app.post('/api/contact', submissionLimiter, async (req: Request, res: Response) => {
+app.post('/api/contact', contactInquiryLimiter, async (req: Request, res: Response) => {
   try {
     const { name, contactInfo, subject, message, consentAccepted } = req.body;
 
@@ -399,6 +709,27 @@ app.post('/api/contact', submissionLimiter, async (req: Request, res: Response) 
   }
 });
 
+// Keep API misses and rejected requests in JSON space; never let the SPA
+// fallback turn an /api URL into index.html.
+export const apiNotFoundHandler: RequestHandler = (_req, res) => {
+  res.status(404).json({ success: false, error: 'API endpoint not found.' });
+};
+app.use('/api', apiNotFoundHandler);
+
+export const apiErrorHandler: ErrorRequestHandler = (error: any, _req, res, _next) => {
+  if (res.headersSent) return;
+  const suppliedStatus = Number(error?.statusCode || error?.status);
+  const status = suppliedStatus >= 400 && suppliedStatus <= 599 ? suppliedStatus : 500;
+  const message = status === 400
+    ? 'The request could not be read. Check the request format and try again.'
+    : status === 413
+      ? 'The request is too large.'
+      : 'An unexpected server error occurred. Please try again later.';
+  if (status >= 500) console.error('[WA JEUN API] Request failed with an internal error.');
+  res.status(status).json({ success: false, error: message });
+};
+app.use('/api', apiErrorHandler);
+
 // Setup Vite middleware in dev or static files in production
 async function startServer() {
   if (!isProduction) {
@@ -409,10 +740,10 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(__dirname, 'dist');
-    app.use(express.static(distPath));
+    const clientPath = path.join(__dirname, 'client');
+    app.use(express.static(clientPath));
     app.get('*', (_req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      res.sendFile(path.join(clientPath, 'index.html'));
     });
   }
 
@@ -421,7 +752,9 @@ async function startServer() {
   });
 }
 
-startServer().catch((err) => {
-  console.error('Failed to start server:', err);
-  process.exit(1);
-});
+if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
+  startServer().catch(() => {
+    console.error('Failed to start WA JEUN server. Check the local server configuration.');
+    process.exit(1);
+  });
+}

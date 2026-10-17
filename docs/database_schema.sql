@@ -108,49 +108,59 @@ CREATE TABLE IF NOT EXISTS public.contact_inquiries (
 -- 5. Row Level Security (RLS) - ACCESS CONTROL
 -- Critical Security Requirement:
 -- - Private customer contacts and business applications must NOT be publicly readable.
--- - The Supabase Data API (anon key) is restricted from selecting any records.
--- - Only trusted server-side code using the service_role key can read/write data.
--- - Public can only view vendors with status = 'approved' (0 at pre-launch).
+-- - The Supabase Data API (anon/authenticated roles) cannot access interest tables.
+-- - Only trusted server-side code using the secret key can read/write data.
+-- - Approved vendors are exposed only through the server API's public-field allowlist.
 -- ==============================================================================
 
 ALTER TABLE public.customer_interest ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vendor_interest ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.contact_inquiries ENABLE ROW LEVEL SECURITY;
 
--- Customer Interest Policies:
--- Disallow all public anon reads
-CREATE POLICY "Disallow public select for customer interest" 
-ON public.customer_interest 
-FOR SELECT 
-TO anon, authenticated
-USING (false);
+-- Remove policies from earlier versions, especially the policy that exposed all
+-- columns on approved vendor_interest records. These DROP statements make this
+-- section repeatable without creating duplicate policies.
+DROP POLICY IF EXISTS "Disallow public select for customer interest" ON public.customer_interest;
+DROP POLICY IF EXISTS "Allow public select for approved vendors only" ON public.vendor_interest;
+DROP POLICY IF EXISTS "Disallow public update for vendor interest" ON public.vendor_interest;
+DROP POLICY IF EXISTS "Disallow public delete for vendor interest" ON public.vendor_interest;
+DROP POLICY IF EXISTS "Disallow public select for contact inquiries" ON public.contact_inquiries;
+DROP POLICY IF EXISTS "Block direct client access to customer interest" ON public.customer_interest;
+DROP POLICY IF EXISTS "Block direct client access to vendor interest" ON public.vendor_interest;
+DROP POLICY IF EXISTS "Block direct client access to contact inquiries" ON public.contact_inquiries;
 
--- Vendor Interest Policies:
--- Public can ONLY view verified, approved vendor listings (status = 'approved')
--- (Zero records match until real onboarding occurs)
-CREATE POLICY "Allow public select for approved vendors only" 
-ON public.vendor_interest 
-FOR SELECT 
-TO anon, authenticated
-USING (status = 'approved');
+-- RLS alone is not sufficient when table grants exist. Remove all direct table
+-- privileges from public client roles and grant access only to the trusted
+-- server role. The public /api/vendors route uses an explicit field allowlist.
+REVOKE ALL PRIVILEGES ON TABLE
+    public.customer_interest,
+    public.vendor_interest,
+    public.contact_inquiries
+FROM PUBLIC, anon, authenticated;
 
--- Disallow public updates/deletes to vendor applications
-CREATE POLICY "Disallow public update for vendor interest" 
-ON public.vendor_interest 
-FOR UPDATE 
-TO anon, authenticated
-USING (false);
+GRANT ALL PRIVILEGES ON TABLE
+    public.customer_interest,
+    public.vendor_interest,
+    public.contact_inquiries
+TO service_role;
 
-CREATE POLICY "Disallow public delete for vendor interest" 
-ON public.vendor_interest 
-FOR DELETE 
+CREATE POLICY "Block direct client access to customer interest"
+ON public.customer_interest
+FOR ALL
 TO anon, authenticated
-USING (false);
+USING (false)
+WITH CHECK (false);
 
--- Contact Inquiries Policies:
--- Disallow public select
-CREATE POLICY "Disallow public select for contact inquiries" 
-ON public.contact_inquiries 
-FOR SELECT 
+CREATE POLICY "Block direct client access to vendor interest"
+ON public.vendor_interest
+FOR ALL
 TO anon, authenticated
-USING (false);
+USING (false)
+WITH CHECK (false);
+
+CREATE POLICY "Block direct client access to contact inquiries"
+ON public.contact_inquiries
+FOR ALL
+TO anon, authenticated
+USING (false)
+WITH CHECK (false);

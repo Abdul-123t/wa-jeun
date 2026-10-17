@@ -17,8 +17,10 @@ import {
 import { IJEBU_ODE_AREAS } from '../data/categories';
 import { api } from '../services/api';
 import { BusinessType, FulfillmentOption, OrderingMethod } from '../types';
+import { useAuth } from '../auth/AuthContext';
 
 export const VendorRegistrationPage: React.FC = () => {
+  const { user, session, loading: authLoading } = useAuth();
   const [businessName, setBusinessName] = useState('');
   const [contactName, setContactName] = useState('');
   const [phone, setPhone] = useState('');
@@ -108,7 +110,7 @@ export const VendorRegistrationPage: React.FC = () => {
         fulfillmentOptions,
         message: message.trim() || undefined,
         consentAccepted
-      });
+      }, session?.access_token);
 
       if (res.success) {
         setSuccessData({
@@ -156,6 +158,10 @@ export const VendorRegistrationPage: React.FC = () => {
           </div>
 
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+            {user && <Link
+              to="/account"
+              className="w-full sm:w-auto min-h-[44px] px-6 py-2.5 text-xs font-bold text-[#123B2A] bg-[#B8D94B] hover:bg-[#a7c93e] rounded-xl flex items-center justify-center"
+            >Check application status</Link>}
             <Link
               to="/"
               className="w-full sm:w-auto min-h-[44px] px-6 py-2.5 text-xs font-bold text-[#123B2A] bg-[#B8D94B] hover:bg-[#a7c93e] rounded-xl flex items-center justify-center gap-1.5"
@@ -200,6 +206,15 @@ export const VendorRegistrationPage: React.FC = () => {
           <p className="text-sm sm:text-base text-[#20231F]/80 max-w-xl mx-auto leading-relaxed">
             We're preparing our first group of food businesses for Ijebu Ode. Register your interest so we can learn about your business and contact you about onboarding.
           </p>
+          {authLoading ? (
+            <p role="status" className="mx-auto max-w-xl text-sm text-[#20231F]/60">Restoring your account session…</p>
+          ) : user ? (
+            <p className="mx-auto max-w-xl rounded-xl border border-[#123B2A]/10 bg-white px-4 py-3 text-sm text-[#123B2A]">You’re signed in. This application will be linked to your account so you can check its status.</p>
+          ) : (
+            <p className="mx-auto max-w-xl text-sm text-[#20231F]/65">
+              You can apply without an account. <Link to="/auth?mode=signin" className="font-semibold text-[#123B2A] underline underline-offset-2">Sign in</Link> or <Link to="/auth?mode=signup" className="font-semibold text-[#123B2A] underline underline-offset-2">create an account</Link> before submitting to link your application.
+            </p>
+          )}
         </div>
 
         {/* Cross-Audience Switcher Banner */}
@@ -509,7 +524,7 @@ export const VendorRegistrationPage: React.FC = () => {
             <div className="pt-4">
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || authLoading}
                 className="w-full min-h-[48px] px-6 py-3.5 text-base font-bold text-[#123B2A] bg-[#B8D94B] hover:bg-[#a7c93e] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
               >
                 {isSubmitting ? (
@@ -519,7 +534,7 @@ export const VendorRegistrationPage: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <span>Submit Business Expression of Interest</span>
+                    <span>{authLoading ? 'Restoring account…' : 'Submit Business Expression of Interest'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}

@@ -122,17 +122,17 @@ export const HomePage: React.FC = () => {
               <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <Link
                   to="/customer-register"
-                  className="min-h-[50px] px-7 py-3 text-base font-bold text-[#123B2A] bg-[#B8D94B] hover:bg-[#a7c93e] rounded-xl shadow-sm hover:shadow transition-all text-center flex items-center justify-center gap-2 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]"
+                  className="min-h-12.5 px-7 py-3 text-base font-bold text-[#123B2A] bg-[#B8D94B] hover:bg-[#a7c93e] rounded-xl shadow-sm hover:shadow transition-all text-center flex items-center justify-center gap-2 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]"
                 >
                   <span>Join the Launch List</span>
                   <ArrowRight className="w-4 h-4" />
                 </Link>
                 <Link
                   to="/vendor-register"
-                  className="min-h-[50px] px-6 py-3 text-base font-bold text-[#123B2A] bg-white border border-[#123B2A]/20 hover:border-[#123B2A] rounded-xl transition-all text-center flex items-center justify-center gap-2 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]"
+                  className="min-h-12.5 px-6 py-3 text-base font-bold text-[#123B2A] bg-white border border-[#123B2A]/20 hover:border-[#123B2A] rounded-xl transition-all text-center flex items-center justify-center gap-2 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]"
                 >
                   <Store className="w-4 h-4 text-[#123B2A]" />
-                  <span>I'm a Food Business</span>
+                  <span>List Your Food Business</span>
                 </Link>
               </div>
 
@@ -159,7 +159,11 @@ export const HomePage: React.FC = () => {
             {/* Right Visual: Nigerian Jollof Feast Photography */}
             <div className="lg:col-span-5 relative">
               <div className="relative rounded-2xl overflow-hidden shadow-xl border border-[#123B2A]/10 bg-white group">
-                src={heroImage}
+                <img
+                  src={heroImage}
+                  alt="Nigerian jollof rice feast with grilled chicken and plantain"
+                  className="w-full h-64 sm:h-80 lg:h-112 object-cover"
+                />
 
                 {/* Visual card overlay with clear action */}
                 <div className="p-4 bg-white/95 backdrop-blur-sm border-t border-slate-100 flex items-center justify-between">
@@ -210,11 +214,11 @@ export const HomePage: React.FC = () => {
           <div className="relative grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-5 lg:gap-6">
 
             {/* ── Horizontal progress connector (desktop) ── */}
-            <div className="hidden md:block absolute top-[2.75rem] left-[calc(16.67%+12px)] right-[calc(16.67%+12px)] h-[2px] z-0" aria-hidden="true">
+            <div className="hidden md:block absolute top-11 left-[calc(16.67%+12px)] right-[calc(16.67%+12px)] h-0.5 z-0" aria-hidden="true">
               {/* Track */}
               <div className="absolute inset-0 bg-[#123B2A]/8 rounded-full" />
               {/* Filled progress — through Phase 1 + halfway into Phase 2 */}
-              <div className="absolute left-0 top-0 bottom-0 w-[62%] bg-gradient-to-r from-[#B8D94B] to-[#B8D94B]/60 rounded-full" />
+              <div className="absolute left-0 top-0 bottom-0 w-[62%] bg-linear-to-r from-[#B8D94B] to-[#B8D94B]/60 rounded-full" />
             </div>
 
             {/* ── Phase 1: Platform Preparation ── */}
@@ -231,7 +235,7 @@ export const HomePage: React.FC = () => {
                   </span>
                 </div>
                 {/* Mobile vertical connector */}
-                <div className="md:hidden absolute left-[19px] top-[52px] bottom-0 w-[2px] bg-gradient-to-b from-[#B8D94B] to-[#B8D94B]/40 rounded-full" aria-hidden="true" />
+                <div className="md:hidden absolute left-4.75 top-13 bottom-0 w-0.5 bg-linear-to-b from-[#B8D94B] to-[#B8D94B]/40 rounded-full" aria-hidden="true" />
               </div>
               {/* Card */}
               <div className="ml-0 md:ml-0 p-5 rounded-2xl bg-[#FFF8E9] border border-[#123B2A]/10 space-y-2 transition-shadow duration-200 hover:shadow-md group-focus-within:shadow-md">
@@ -258,7 +262,7 @@ export const HomePage: React.FC = () => {
                   </span>
                 </div>
                 {/* Mobile vertical connector */}
-                <div className="md:hidden absolute left-[19px] top-[52px] bottom-0 w-[2px] bg-[#123B2A]/8 rounded-full" aria-hidden="true" />
+                <div className="md:hidden absolute left-4.75 top-13 bottom-0 w-0.5 bg-[#123B2A]/8 rounded-full" aria-hidden="true" />
               </div>
               {/* Card — elevated for current phase */}
               <div className="ml-0 md:ml-0 p-5 rounded-2xl bg-white border-2 border-[#B8D94B]/40 shadow-sm space-y-2 transition-shadow duration-200 hover:shadow-md group-focus-within:shadow-md">
@@ -306,7 +310,7 @@ export const HomePage: React.FC = () => {
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
               to="/vendor-register"
-              className="min-h-[48px] px-7 py-3 text-sm font-bold text-[#123B2A] bg-[#B8D94B] hover:bg-[#a9cc38] rounded-xl shadow-sm hover:shadow-md transition-all duration-200 ease-out hover:-translate-y-[1px] active:translate-y-0 active:scale-[0.98] flex items-center justify-center gap-2 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A] focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+              className="min-h-12 px-7 py-3 text-sm font-bold text-[#123B2A] bg-[#B8D94B] hover:bg-[#a9cc38] rounded-xl shadow-sm hover:shadow-md transition-all duration-200 ease-out hover:-translate-y-px active:translate-y-0 active:scale-[0.98] flex items-center justify-center gap-2 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A] focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
             >
               <Store className="w-4 h-4" />
               <span>Register Your Food Business</span>
@@ -314,7 +318,7 @@ export const HomePage: React.FC = () => {
             </Link>
             <Link
               to="/explore"
-              className="min-h-[48px] px-6 py-3 text-sm font-bold text-[#123B2A] bg-white border border-[#123B2A]/15 hover:border-[#123B2A]/40 rounded-xl transition-all duration-200 ease-out hover:shadow-sm active:scale-[0.98] flex items-center justify-center gap-1.5 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A] focus-visible:ring-offset-2 motion-reduce:transition-none"
+              className="min-h-12 px-6 py-3 text-sm font-bold text-[#123B2A] bg-white border border-[#123B2A]/15 hover:border-[#123B2A]/40 rounded-xl transition-all duration-200 ease-out hover:shadow-sm active:scale-[0.98] flex items-center justify-center gap-1.5 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A] focus-visible:ring-offset-2 motion-reduce:transition-none"
             >
               <Compass className="w-4 h-4" />
               <span>Explore Wá Jẹun</span>
@@ -369,7 +373,7 @@ export const HomePage: React.FC = () => {
                       (e.target as HTMLElement).style.display = 'none';
                     }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                  <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent" />
                   <div className="absolute bottom-3 left-3 right-3 text-white">
                     <h3 className="font-bold text-base leading-snug drop-shadow-sm">
                       {category.name}
@@ -419,7 +423,7 @@ export const HomePage: React.FC = () => {
               <button
                 onClick={() => setHowItWorksTab('diners')}
                 type="button"
-                className={`min-h-[40px] px-5 text-xs font-bold rounded-lg transition-all ${howItWorksTab === 'diners'
+                className={`min-h-10 px-5 text-xs font-bold rounded-lg transition-all ${howItWorksTab === 'diners'
                   ? 'bg-white text-[#123B2A] shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
                   }`}
@@ -429,7 +433,7 @@ export const HomePage: React.FC = () => {
               <button
                 onClick={() => setHowItWorksTab('vendors')}
                 type="button"
-                className={`min-h-[40px] px-5 text-xs font-bold rounded-lg transition-all ${howItWorksTab === 'vendors'
+                className={`min-h-10 px-5 text-xs font-bold rounded-lg transition-all ${howItWorksTab === 'vendors'
                   ? 'bg-white text-[#123B2A] shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
                   }`}
@@ -609,14 +613,14 @@ export const HomePage: React.FC = () => {
               <div className="pt-4 flex flex-col sm:flex-row gap-3">
                 <Link
                   to="/vendor-register"
-                  className="min-h-[48px] px-8 py-3.5 text-base font-bold text-[#123B2A] bg-[#B8D94B] hover:bg-[#a7c93e] rounded-xl shadow-lg transition-all text-center flex items-center justify-center gap-2 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  className="min-h-12 px-8 py-3.5 text-base font-bold text-[#123B2A] bg-[#B8D94B] hover:bg-[#a7c93e] rounded-xl shadow-lg transition-all text-center flex items-center justify-center gap-2 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                 >
                   <span>Register Your Business</span>
                   <ArrowRight className="w-4 h-4" />
                 </Link>
                 <Link
                   to="/legal?tab=contact"
-                  className="min-h-[48px] px-6 py-3.5 text-base font-bold text-white border border-white/20 hover:border-white rounded-xl transition-all text-center flex items-center justify-center active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  className="min-h-12 px-6 py-3.5 text-base font-bold text-white border border-white/20 hover:border-white rounded-xl transition-all text-center flex items-center justify-center active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                 >
                   Ask a Question
                 </Link>
@@ -726,7 +730,7 @@ export const HomePage: React.FC = () => {
                 >
                   <button
                     onClick={() => toggleFaq(idx)}
-                    className="w-full min-h-[52px] px-5 py-4 text-left flex items-center justify-between gap-4 font-semibold text-sm sm:text-base text-[#123B2A] hover:bg-slate-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]"
+                    className="w-full min-h-13 px-5 py-4 text-left flex items-center justify-between gap-4 font-semibold text-sm sm:text-base text-[#123B2A] hover:bg-slate-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]"
                     aria-expanded={isOpen}
                   >
                     <span>{faq.q}</span>
@@ -775,7 +779,7 @@ export const HomePage: React.FC = () => {
               <div>
                 <Link
                   to="/customer-register"
-                  className="w-full min-h-[46px] px-6 py-2.5 text-sm font-bold text-[#123B2A] bg-[#B8D94B] hover:bg-[#a7c93e] rounded-xl transition-all flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]"
+                  className="w-full min-h-11.5 px-6 py-2.5 text-sm font-bold text-[#123B2A] bg-[#B8D94B] hover:bg-[#a7c93e] rounded-xl transition-all flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]"
                 >
                   <span>Get Early Access</span>
                   <ArrowRight className="w-4 h-4" />
@@ -795,7 +799,7 @@ export const HomePage: React.FC = () => {
               <div>
                 <Link
                   to="/vendor-register"
-                  className="w-full min-h-[46px] px-6 py-2.5 text-sm font-bold text-[#123B2A] bg-white hover:bg-slate-100 rounded-xl transition-all flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  className="w-full min-h-11.5 px-6 py-2.5 text-sm font-bold text-[#123B2A] bg-white hover:bg-slate-100 rounded-xl transition-all flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                 >
                   <Store className="w-4 h-4 text-[#123B2A]" />
                   <span>Register Food Business</span>

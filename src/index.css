@@ -8,6 +8,10 @@
   --color-white: #FFFFFF;
 }
 
+html {
+  scroll-padding-top: 5rem;
+}
+
 body {
   font-family: 'Plus Jakarta Sans', 'Noto Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   background-color: #FFF8E9;
@@ -50,23 +54,41 @@ h1, h2, h3, .font-display {
   color: #B8D94B;
 }
 
-.footer-bottom-link {
-  color: rgba(255, 248, 233, 0.45);
-  transition: color 200ms ease-out;
+.footer-link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 0.35rem;
+  color: rgba(255, 248, 233, 0.72);
+  font-size: 0.875rem;
+  transition: color 180ms ease-out, transform 180ms ease-out;
 }
-.footer-bottom-link:hover,
-.footer-bottom-link:focus-visible {
-  color: #E8913A;
+.footer-link svg { opacity: 0; transform: translate(-3px, 2px); transition: opacity 180ms ease-out, transform 180ms ease-out; }
+.footer-link:hover, .footer-link:focus-visible, .footer-action:hover, .footer-action:focus-visible { color: #B8D94B; }
+.footer-link:hover svg, .footer-link:focus-visible svg { opacity: 1; transform: translate(0, 0); }
+.footer-link:focus-visible, .footer-action:focus-visible, .footer-bottom-link:focus-visible { outline: 2px solid #B8D94B; outline-offset: 4px; border-radius: 2px; }
+.footer-action { display: inline-flex; min-height: 44px; align-items: center; gap: 0.5rem; color: #FFF8E9; font-size: 0.875rem; font-weight: 650; transition: color 180ms ease-out; }
+.footer-rule { height: 1px; background: rgba(255, 248, 233, 0.17); }
+.footer-artwork {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  max-width: 39rem;
+  margin-inline: auto;
 }
-.footer-bottom-link:focus-visible {
-  outline: 2px solid rgba(232, 145, 58, 0.6);
-  outline-offset: 2px;
-  border-radius: 2px;
+.footer-artwork::before {
+  position: absolute;
+  z-index: -1;
+  inset: 13% 8%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(184, 217, 75, 0.1), rgba(18, 59, 42, 0) 70%);
+  content: '';
 }
+.footer-artwork svg { width: 100%; height: auto; }
 
 @media (prefers-reduced-motion: reduce) {
-  .footer-bottom-link {
-    transition: none;
+  .footer-link, .footer-link svg, .footer-action {
+    transition: none !important;
   }
 }
 

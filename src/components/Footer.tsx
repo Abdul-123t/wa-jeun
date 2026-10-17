@@ -1,200 +1,82 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, MapPin, Share2 } from 'lucide-react';
+import { FooterIllustrations } from './FooterIllustrations';
 
-export const Footer: React.FC = () => {
-  const currentYear = new Date().getFullYear();
+type FooterProps = { onOpenShare?: () => void };
 
-  const discoverLinks = [
-    { label: 'Explore Food', to: '/explore' },
-    { label: 'Browse Restaurants', to: '/explore' },
-    { label: 'Popular Food Categories', to: '/explore?category=all' },
-  ];
+export const Footer: React.FC<FooterProps> = ({ onOpenShare }) => {
+  const year = new Date().getFullYear();
 
-  const businessLinks = [
-    { label: 'Register Your Business', to: '/vendor-register' },
-    { label: 'How It Works', to: '/#how-it-works' },
-  ];
+  return <footer className="relative overflow-hidden bg-[#123B2A] text-[#FFF8E9]" role="contentinfo">
+    <div className="h-1 bg-[#B8D94B]" aria-hidden="true" />
 
-  const helpLinks = [
-    { label: 'Contact Us', to: '/legal?tab=contact' },
-    { label: 'Frequently Asked Questions', to: '/#faq' },
-    { label: 'Privacy Policy', to: '/legal?tab=privacy' },
-    { label: 'Terms of Service', to: '/legal?tab=terms' },
-  ];
-
-  return (
-    <footer
-      className="relative bg-[#0D2E20] text-[#FFF8E9]/85 overflow-hidden"
-      role="contentinfo"
-    >
-      {/* Decorative food-inspired SVG motif — subtle, non-distracting */}
-      <div
-        className="absolute top-0 right-0 w-[420px] h-[420px] pointer-events-none select-none opacity-[0.03]"
-        aria-hidden="true"
-      >
-        <svg
-          viewBox="0 0 420 420"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          className="w-full h-full"
-        >
-          {/* Stylised bowl / mortar — a nod to food preparation */}
-          <ellipse cx="210" cy="260" rx="170" ry="80" stroke="#FFF8E9" strokeWidth="2.5" />
-          <path
-            d="M60 260 Q 60 140 210 120 Q 360 140 360 260"
-            stroke="#FFF8E9"
-            strokeWidth="2.5"
-            fill="none"
-          />
-          <line x1="210" y1="50" x2="210" y2="120" stroke="#FFF8E9" strokeWidth="2" />
-          <line x1="180" y1="60" x2="195" y2="125" stroke="#FFF8E9" strokeWidth="1.5" />
-          <line x1="240" y1="60" x2="225" y2="125" stroke="#FFF8E9" strokeWidth="1.5" />
-          {/* Steam wisps */}
-          <path d="M185 50 Q 180 30 190 15" stroke="#FFF8E9" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-          <path d="M210 45 Q 205 20 215 5" stroke="#FFF8E9" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-          <path d="M235 50 Q 230 30 240 15" stroke="#FFF8E9" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-        </svg>
-      </div>
-
-      {/* Top accent line */}
-      <div className="h-[3px] bg-gradient-to-r from-[#B8D94B]/60 via-[#E8913A]/40 to-[#B8D94B]/20" aria-hidden="true" />
-
-      {/* ─── Main content ─── */}
-      <div className="relative max-w-7xl mx-auto px-5 sm:px-8 lg:px-10 pt-14 pb-10">
-
-        {/* Grid: brand + 3 link columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-y-12 gap-x-8 lg:gap-x-10">
-
-          {/* ── Brand column ── */}
-          <div className="lg:col-span-4 space-y-5">
-            <Link
-              to="/"
-              className="inline-block group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8913A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0D2E20] rounded-lg"
-              aria-label="Wá Jẹun Home"
-            >
-              <span className="font-display text-[1.75rem] font-extrabold tracking-tight text-[#FFF8E9] lowercase transition-transform duration-300 ease-out group-hover:translate-x-0.5 motion-reduce:transition-none">
-                wá jẹun
-              </span>
-            </Link>
-
-            <p className="text-[0.84rem] leading-relaxed text-[#FFF8E9]/65 max-w-xs">
-              Discover great food around you. Find local favourites, explore
-              menus, and order from food businesses in your community.
-            </p>
-
-            <div className="flex items-center gap-2 text-xs text-[#FFF8E9]/50">
-              <MapPin className="w-3.5 h-3.5 text-[#B8D94B] shrink-0" />
-              <span>Ijebu Ode, Ogun State, Nigeria</span>
-            </div>
-          </div>
-
-          {/* ── Discover column ── */}
-          <nav className="lg:col-span-2 lg:col-start-6" aria-label="Discover">
-            <h3 className="footer-heading">Discover</h3>
-            <ul className="space-y-2.5 mt-4" role="list">
-              {discoverLinks.map((link) => (
-                <li key={link.label}>
-                  <FooterLink to={link.to}>{link.label}</FooterLink>
-                </li>
-              ))}
-            </ul>
-          </nav>
-
-          {/* ── For Food Businesses column ── */}
-          <nav className="lg:col-span-3" aria-label="For Food Businesses">
-            <h3 className="footer-heading">For Food Businesses</h3>
-            <ul className="space-y-2.5 mt-4" role="list">
-              {businessLinks.map((link) => (
-                <li key={link.label}>
-                  <FooterLink to={link.to}>{link.label}</FooterLink>
-                </li>
-              ))}
-            </ul>
-          </nav>
-
-          {/* ── Help & Information column ── */}
-          <nav className="lg:col-span-3" aria-label="Help and Information">
-            <h3 className="footer-heading">Help &amp; Information</h3>
-            <ul className="space-y-2.5 mt-4" role="list">
-              {helpLinks.map((link) => (
-                <li key={link.label}>
-                  <FooterLink to={link.to}>{link.label}</FooterLink>
-                </li>
-              ))}
-            </ul>
-          </nav>
+    <section className="border-b border-[#FFF8E9]/15 px-5 py-11 sm:px-8 sm:py-14 lg:py-[4.5rem]" aria-labelledby="footer-editorial-title">
+      <div className="mx-auto grid max-w-7xl items-center gap-x-10 gap-y-7 lg:grid-cols-[.92fr_1.08fr] lg:gap-x-14">
+        <div className="max-w-[34rem] lg:col-start-1 lg:row-start-1">
+          <p className="mb-3 font-display text-[11px] font-bold uppercase tracking-[.2em] text-[#B8D94B] sm:text-xs">A little taste of Ijebu</p>
+          <h2 id="footer-editorial-title" className="font-display text-[2.3rem] font-semibold leading-[1.04] tracking-[-.04em] text-[#FFF8E9] min-[360px]:text-[2.55rem] sm:text-5xl lg:text-[3.4rem]">
+            Good food. Good people. <span className="text-[#B8D94B]">Good Ijebu.</span>
+          </h2>
         </div>
 
-        {/* ─── Divider ─── */}
-        <div className="mt-14 mb-6 h-px bg-[#FFF8E9]/8" aria-hidden="true" />
-
-        {/* ─── Bottom bar ─── */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-[0.7rem] text-[#FFF8E9]/40">
-          <p>
-            &copy; {currentYear} Wá Jẹun. All rights reserved.
-          </p>
-
-          <div className="flex items-center gap-5">
-            <Link
-              to="/legal?tab=privacy"
-              className="footer-bottom-link"
-            >
-              Privacy
-            </Link>
-            <span className="text-[#FFF8E9]/15" aria-hidden="true">·</span>
-            <Link
-              to="/legal?tab=terms"
-              className="footer-bottom-link"
-            >
-              Terms
-            </Link>
-            <span className="text-[#FFF8E9]/15" aria-hidden="true">·</span>
-            <Link
-              to="/legal?tab=contact"
-              className="footer-bottom-link"
-            >
-              Contact
-            </Link>
-          </div>
+        <div className="footer-artwork -mx-1 sm:mx-0 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+          <FooterIllustrations />
         </div>
+
+        <p className="max-w-[36rem] text-sm leading-7 text-[#FFF8E9]/80 sm:text-base sm:leading-8 lg:col-start-1 lg:row-start-2">
+          From the beloved bukas of Ijebu Ode to the sizzling grills and kitchens around town, we’re celebrating the local cooks, authentic flavours, and shared moments that make our city feel like home. Every meal tells a story, and every local kitchen has one worth discovering.
+        </p>
       </div>
-    </footer>
-  );
+    </section>
+
+    <div className="mx-auto grid max-w-7xl grid-cols-1 gap-x-10 gap-y-8 px-5 py-9 sm:grid-cols-2 sm:gap-y-10 sm:px-8 sm:py-11 lg:grid-cols-12 lg:gap-x-8 lg:py-14">
+      <div className="sm:col-span-2 sm:max-w-xl lg:col-span-4 lg:pr-8">
+        <Link to="/" aria-label="wá jẹun home" className="inline-flex rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B8D94B] focus-visible:ring-offset-4 focus-visible:ring-offset-[#123B2A]">
+          <img src="/brand/wa-jeun-logo.webp" alt="" aria-hidden="true" className="h-28 w-auto rounded-md object-contain" />
+        </Link>
+        <p className="mt-1 text-sm font-semibold text-[#B8D94B]">Your City. Your Food.</p>
+        <p className="mt-4 max-w-sm text-sm leading-6 text-[#FFF8E9]/75">A local food marketplace bringing Ijebu Ode’s cooks, kitchens, and authentic flavours closer to the people who love them.</p>
+        <p className="mt-4 flex items-center gap-2 text-sm text-[#FFF8E9]/75"><MapPin className="h-4 w-4 shrink-0 text-[#B8D94B]" aria-hidden="true" />Ijebu Ode, Ogun State, Nigeria</p>
+        {onOpenShare && <button type="button" onClick={onOpenShare} className="footer-action mt-3 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B8D94B] focus-visible:ring-offset-4 focus-visible:ring-offset-[#123B2A]">
+          <Share2 className="h-4 w-4" aria-hidden="true" />Share wá jẹun
+        </button>}
+      </div>
+
+      <FooterNav title="Explore" className="lg:col-span-2" links={[
+        ['Explore Food', '/explore'], ['Join the Launch List', '/customer-register'], ['About wá jẹun', '/about'],
+      ]} />
+
+      <div className="lg:col-span-3">
+        <h3 className="footer-heading">Food businesses</h3>
+        <p className="mt-3 max-w-xs text-sm leading-6 text-[#FFF8E9]/70">Restaurants, bukas, grills, bakeries, and street-food businesses: bring your kitchen to more local food lovers.</p>
+        <Link to="/vendor-register" className="footer-action mt-3">
+          List Your Food Business <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+        </Link>
+      </div>
+
+      <FooterNav title="Help & information" className="lg:col-span-3" links={[
+        ['Contact', '/legal?tab=contact'], ['Privacy', '/legal?tab=privacy'], ['Terms', '/legal?tab=terms'],
+      ]} />
+    </div>
+
+    <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
+      <div className="footer-rule" aria-hidden="true" />
+      <div className="flex flex-col gap-2.5 py-5 text-xs leading-5 text-[#FFF8E9]/70 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <p>© {year} wá jẹun. All rights reserved.</p>
+        <p className="text-[#FFF8E9]/80">A product of NAMACO TECHNOLOGY NIGERIA LIMITED.</p>
+      </div>
+    </div>
+  </footer>;
 };
 
-/* ─── Reusable footer link component ─── */
-interface FooterLinkProps {
-  to: string;
-  children: React.ReactNode;
-}
+type FooterNavProps = { title: string; className?: string; links: [string, string][] };
 
-const FooterLink: React.FC<FooterLinkProps> = ({ to, children }) => {
-  const isHash = to.startsWith('/#');
-
-  const sharedClasses =
-    'group/link inline-flex items-center gap-1 text-[0.82rem] text-[#FFF8E9]/60 transition-colors duration-200 ease-out hover:text-[#E8913A] focus-visible:text-[#E8913A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8913A]/60 focus-visible:ring-offset-1 focus-visible:ring-offset-[#0D2E20] rounded-sm motion-reduce:transition-none';
-
-  const arrow = (
-    <ArrowUpRight
-      className="w-3 h-3 opacity-0 -translate-x-1 translate-y-0.5 transition-all duration-200 ease-out group-hover/link:opacity-70 group-hover/link:translate-x-0 group-hover/link:translate-y-0 group-focus-visible/link:opacity-70 group-focus-visible/link:translate-x-0 group-focus-visible/link:translate-y-0 motion-reduce:transition-none"
-      aria-hidden="true"
-    />
-  );
-
-  if (isHash) {
-    return (
-      <a href={to} className={sharedClasses}>
-        {children}
-        {arrow}
-      </a>
-    );
-  }
-
-  return (
-    <Link to={to} className={sharedClasses}>
-      {children}
-      {arrow}
-    </Link>
-  );
-};
+const FooterNav: React.FC<FooterNavProps> = ({ title, className = '', links }) => (
+  <nav className={className} aria-label={title}>
+    <h3 className="footer-heading">{title}</h3>
+    <ul className="mt-2">
+      {links.map(([label, to]) => <li key={to}><Link className="footer-link" to={to}>{label}<ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" /></Link></li>)}
+    </ul>
+  </nav>
+);

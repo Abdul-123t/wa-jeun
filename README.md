@@ -78,6 +78,22 @@ npm run lint
 npm run build
 ```
 
+### Run the Production Build Locally
+```bash
+npm run build
+npm start
+```
+The Express server serves the compiled frontend and `/api/*` routes from the same origin. Configure `SUPABASE_URL` and the server-only `SUPABASE_SECRET_KEY` (or `SUPABASE_SERVICE_ROLE_KEY`) in the hosting environment before using persistent production features. Node.js 20.19 or newer is required. `npm run preview` starts this same Express production server; it does not run Vite's static-only preview server.
+
+### Production client IP and rate limits
+
+The registration, vendor application, customer interest, contact, and checkout limiters use Express's `req.ip`. The limiter never reads `X-Forwarded-For` itself. Development trusts no proxy and uses the socket peer. Production startup fails unless the hosting topology is explicitly configured:
+
+- Set `WAJEUN_CLIENT_IP_MODE=direct` only after verifying the application socket receives the actual client connection and no proxy sits in front of it.
+- If a reverse proxy sits in front, set `WAJEUN_CLIENT_IP_MODE=trusted-proxy` and `WAJEUN_TRUSTED_PROXY_CIDRS` to the exact source IP/CIDR ranges observed for that proxy tier. Verify the host replaces or safely appends `X-Forwarded-For`, prevents direct access that bypasses the proxy, and that the configured ranges describe the complete network path. Never use `0.0.0.0/0`, `::/0`, or a guessed hop count.
+
+The repository does not establish the deployed host or proxy topology. The founder must verify the hosting network path and configure the matching mode before deployment; otherwise production startup intentionally fails. Counters are process-local, bounded in memory, and reset by time window or process restart. Multiple server instances do not share counters. If scaling beyond one instance, use a shared atomic store such as Redis with an atomic increment/expiry operation; add it only when multi-instance deployment is needed.
+
 ### Testing the MVP Checklist:
 1. **Homepage:** Browse the hero section, click categories to jump to Explore Food, toggle FAQs.
 2. **Customer Registration:** Fill out the early access form (`/customer-register`), test WhatsApp vs. Email validation, select Ijebu Ode neighborhood, and submit. Notice the genuine reference ID and instant persistence.

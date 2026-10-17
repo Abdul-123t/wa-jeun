@@ -1,7 +1,778 @@
 {
-  "customers": [],
-  "vendors": [],
-  "contacts": [],
+  "customers": [
+    {
+      "id": "cust_1792238739738_cztjf",
+      "name": "Olamide Adeleke",
+      "contact_method": "phone",
+      "phone": "+2348033349289",
+      "neighborhood": "Molipa",
+      "favorite_categories": [
+        "Rice Dishes",
+        "Swallow and Soups"
+      ],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T12:05:39.738Z"
+    },
+    {
+      "id": "cust_1792238739778_ds0do",
+      "name": "Concurrent User A",
+      "contact_method": "phone",
+      "phone": "+2348091381603",
+      "neighborhood": "Igbeba",
+      "favorite_categories": [],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T12:05:39.778Z"
+    },
+    {
+      "id": "cust_1792239694978_vdop8",
+      "name": "Olamide Adeleke",
+      "contact_method": "phone",
+      "phone": "+2348032626195",
+      "neighborhood": "Molipa",
+      "favorite_categories": [
+        "Rice Dishes",
+        "Swallow and Soups"
+      ],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T12:21:34.978Z"
+    },
+    {
+      "id": "cust_1792239694987_li173",
+      "name": "Concurrent User A",
+      "contact_method": "phone",
+      "phone": "+2348092165624",
+      "neighborhood": "Igbeba",
+      "favorite_categories": [],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T12:21:34.987Z"
+    },
+    {
+      "id": "cust_1792241082920_ogc8k",
+      "name": "Olamide Adeleke",
+      "contact_method": "phone",
+      "phone": "+2348033601785",
+      "neighborhood": "Molipa",
+      "favorite_categories": [
+        "Rice Dishes",
+        "Swallow and Soups"
+      ],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T12:44:42.921Z"
+    },
+    {
+      "id": "cust_1792241082925_qogbh",
+      "name": "Concurrent User A",
+      "contact_method": "phone",
+      "phone": "+2348098212390",
+      "neighborhood": "Igbeba",
+      "favorite_categories": [],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T12:44:42.925Z"
+    },
+    {
+      "id": "cust_1792242130442_wm3rw",
+      "name": "Olamide Adeleke",
+      "contact_method": "phone",
+      "phone": "+2348039988511",
+      "neighborhood": "Molipa",
+      "favorite_categories": [
+        "Rice Dishes",
+        "Swallow and Soups"
+      ],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:02:10.442Z"
+    },
+    {
+      "id": "cust_1792242130508_teel6",
+      "name": "Concurrent User A",
+      "contact_method": "phone",
+      "phone": "+2348094825134",
+      "neighborhood": "Igbeba",
+      "favorite_categories": [],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:02:10.508Z"
+    },
+    {
+      "id": "cust_1792242177658_7ypq7",
+      "name": "Olamide Adeleke",
+      "contact_method": "phone",
+      "phone": "+2348034909534",
+      "neighborhood": "Molipa",
+      "favorite_categories": [
+        "Rice Dishes",
+        "Swallow and Soups"
+      ],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:02:57.658Z"
+    },
+    {
+      "id": "cust_1792242177665_3qveu",
+      "name": "Concurrent User A",
+      "contact_method": "phone",
+      "phone": "+2348097003975",
+      "neighborhood": "Igbeba",
+      "favorite_categories": [],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:02:57.665Z"
+    },
+    {
+      "id": "cust_1792242220452_srhii",
+      "name": "Olamide Adeleke",
+      "contact_method": "phone",
+      "phone": "+2348034534732",
+      "neighborhood": "Molipa",
+      "favorite_categories": [
+        "Rice Dishes",
+        "Swallow and Soups"
+      ],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:03:40.459Z"
+    },
+    {
+      "id": "cust_1792242220491_gp2wy",
+      "name": "Concurrent User A",
+      "contact_method": "phone",
+      "phone": "+2348091212473",
+      "neighborhood": "Igbeba",
+      "favorite_categories": [],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:03:40.491Z"
+    },
+    {
+      "id": "cust_1792242265652_ackex",
+      "name": "Olamide Adeleke",
+      "contact_method": "phone",
+      "phone": "+2348037089445",
+      "neighborhood": "Molipa",
+      "favorite_categories": [
+        "Rice Dishes",
+        "Swallow and Soups"
+      ],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:04:25.652Z"
+    },
+    {
+      "id": "cust_1792242265660_9g2zc",
+      "name": "Concurrent User A",
+      "contact_method": "phone",
+      "phone": "+2348092630390",
+      "neighborhood": "Igbeba",
+      "favorite_categories": [],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:04:25.660Z"
+    },
+    {
+      "id": "cust_1792243209163_l2nax",
+      "name": "Olamide Adeleke",
+      "contact_method": "phone",
+      "phone": "+2348032600300",
+      "neighborhood": "Molipa",
+      "favorite_categories": [
+        "Rice Dishes",
+        "Swallow and Soups"
+      ],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:20:09.163Z"
+    },
+    {
+      "id": "cust_1792243209180_97yt1",
+      "name": "Concurrent User A",
+      "contact_method": "phone",
+      "phone": "+2348093211021",
+      "neighborhood": "Igbeba",
+      "favorite_categories": [],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:20:09.180Z"
+    },
+    {
+      "id": "cust_1792243239665_w8839",
+      "name": "Olamide Adeleke",
+      "contact_method": "phone",
+      "phone": "+2348034023002",
+      "neighborhood": "Molipa",
+      "favorite_categories": [
+        "Rice Dishes",
+        "Swallow and Soups"
+      ],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:20:39.665Z"
+    },
+    {
+      "id": "cust_1792243239690_moxlm",
+      "name": "Concurrent User A",
+      "contact_method": "phone",
+      "phone": "+2348093086542",
+      "neighborhood": "Igbeba",
+      "favorite_categories": [],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:20:39.690Z"
+    },
+    {
+      "id": "cust_1792243875628_dk5tu",
+      "name": "Olamide Adeleke",
+      "contact_method": "phone",
+      "phone": "+2348031693573",
+      "neighborhood": "Molipa",
+      "favorite_categories": [
+        "Rice Dishes",
+        "Swallow and Soups"
+      ],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:31:15.628Z"
+    },
+    {
+      "id": "cust_1792243875657_qb4v6",
+      "name": "Concurrent User A",
+      "contact_method": "phone",
+      "phone": "+2348095077504",
+      "neighborhood": "Igbeba",
+      "favorite_categories": [],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:31:15.657Z"
+    },
+    {
+      "id": "cust_1792243906352_5s1pk",
+      "name": "Olamide Adeleke",
+      "contact_method": "phone",
+      "phone": "+2348036755900",
+      "neighborhood": "Molipa",
+      "favorite_categories": [
+        "Rice Dishes",
+        "Swallow and Soups"
+      ],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:31:46.353Z"
+    },
+    {
+      "id": "cust_1792243906418_lybeg",
+      "name": "Concurrent User A",
+      "contact_method": "phone",
+      "phone": "+2348096911905",
+      "neighborhood": "Igbeba",
+      "favorite_categories": [],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:31:46.418Z"
+    },
+    {
+      "id": "cust_1792243963410_gdb7p",
+      "name": "Olamide Adeleke",
+      "contact_method": "phone",
+      "phone": "+2348031412986",
+      "neighborhood": "Molipa",
+      "favorite_categories": [
+        "Rice Dishes",
+        "Swallow and Soups"
+      ],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:32:43.410Z"
+    },
+    {
+      "id": "cust_1792243963422_set48",
+      "name": "Concurrent User A",
+      "contact_method": "phone",
+      "phone": "+2348094607306",
+      "neighborhood": "Igbeba",
+      "favorite_categories": [],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:32:43.423Z"
+    },
+    {
+      "id": "cust_1792245301629_co2dp",
+      "name": "Olamide Adeleke",
+      "contact_method": "phone",
+      "phone": "+2348032447247",
+      "neighborhood": "Molipa",
+      "favorite_categories": [
+        "Rice Dishes",
+        "Swallow and Soups"
+      ],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:55:01.629Z"
+    },
+    {
+      "id": "cust_1792245301720_rb22k",
+      "name": "Concurrent User A",
+      "contact_method": "phone",
+      "phone": "+2348096611020",
+      "neighborhood": "Igbeba",
+      "favorite_categories": [],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:55:01.720Z"
+    },
+    {
+      "id": "cust_1792245387206_k0z1r",
+      "name": "Olamide Adeleke",
+      "contact_method": "phone",
+      "phone": "+2348037938760",
+      "neighborhood": "Molipa",
+      "favorite_categories": [
+        "Rice Dishes",
+        "Swallow and Soups"
+      ],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:56:27.206Z"
+    },
+    {
+      "id": "cust_1792245387590_b761o",
+      "name": "Concurrent User A",
+      "contact_method": "phone",
+      "phone": "+2348091824113",
+      "neighborhood": "Igbeba",
+      "favorite_categories": [],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:56:27.590Z"
+    },
+    {
+      "id": "cust_1792245443123_e4396",
+      "name": "Olamide Adeleke",
+      "contact_method": "phone",
+      "phone": "+2348036756353",
+      "neighborhood": "Molipa",
+      "favorite_categories": [
+        "Rice Dishes",
+        "Swallow and Soups"
+      ],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:57:23.125Z"
+    },
+    {
+      "id": "cust_1792245443502_gzkw1",
+      "name": "Concurrent User A",
+      "contact_method": "phone",
+      "phone": "+2348094674929",
+      "neighborhood": "Igbeba",
+      "favorite_categories": [],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:57:23.502Z"
+    },
+    {
+      "id": "cust_1792245482518_rd1ve",
+      "name": "Olamide Adeleke",
+      "contact_method": "phone",
+      "phone": "+2348035938669",
+      "neighborhood": "Molipa",
+      "favorite_categories": [
+        "Rice Dishes",
+        "Swallow and Soups"
+      ],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:58:02.518Z"
+    },
+    {
+      "id": "cust_1792245482538_27cv2",
+      "name": "Concurrent User A",
+      "contact_method": "phone",
+      "phone": "+2348096144282",
+      "neighborhood": "Igbeba",
+      "favorite_categories": [],
+      "consent_accepted": true,
+      "created_at": "2026-10-17T13:58:02.538Z"
+    }
+  ],
+  "vendors": [
+    {
+      "id": "vnd_1792238739787_2qmb2",
+      "business_name": "Ijebu Pot Kitchen",
+      "contact_name": "Mrs. Funke",
+      "phone": "+2348029202549",
+      "neighborhood": "Folagbade",
+      "business_type": "local_buka",
+      "current_ordering_methods": [
+        "walk_in",
+        "phone_calls"
+      ],
+      "fulfillment_options": "pickup_only",
+      "message": "Famous for ofada rice and spicy buka stew.",
+      "consent_accepted": true,
+      "status": "pending_review",
+      "created_at": "2026-10-17T12:05:39.787Z"
+    },
+    {
+      "id": "vnd_1792239695001_tgt1a",
+      "business_name": "Ijebu Pot Kitchen",
+      "contact_name": "Mrs. Funke",
+      "phone": "+2348021794500",
+      "neighborhood": "Folagbade",
+      "business_type": "local_buka",
+      "current_ordering_methods": [
+        "walk_in",
+        "phone_calls"
+      ],
+      "fulfillment_options": "pickup_only",
+      "message": "Famous for ofada rice and spicy buka stew.",
+      "consent_accepted": true,
+      "status": "pending_review",
+      "created_at": "2026-10-17T12:21:35.001Z"
+    },
+    {
+      "id": "vnd_1792241082930_orovn",
+      "business_name": "Ijebu Pot Kitchen",
+      "contact_name": "Mrs. Funke",
+      "phone": "+2348022500150",
+      "neighborhood": "Folagbade",
+      "business_type": "local_buka",
+      "current_ordering_methods": [
+        "walk_in",
+        "phone_calls"
+      ],
+      "fulfillment_options": "pickup_only",
+      "message": "Famous for ofada rice and spicy buka stew.",
+      "consent_accepted": true,
+      "status": "pending_review",
+      "created_at": "2026-10-17T12:44:42.930Z"
+    },
+    {
+      "id": "vnd_1792242130521_i6ea4",
+      "business_name": "Ijebu Pot Kitchen",
+      "contact_name": "Mrs. Funke",
+      "phone": "+2348025997990",
+      "neighborhood": "Folagbade",
+      "business_type": "local_buka",
+      "current_ordering_methods": [
+        "walk_in",
+        "phone_calls"
+      ],
+      "fulfillment_options": "pickup_only",
+      "message": "Famous for ofada rice and spicy buka stew.",
+      "consent_accepted": true,
+      "status": "pending_review",
+      "created_at": "2026-10-17T13:02:10.522Z"
+    },
+    {
+      "id": "vnd_1792242177688_ggayg",
+      "business_name": "Ijebu Pot Kitchen",
+      "contact_name": "Mrs. Funke",
+      "phone": "+2348022168195",
+      "neighborhood": "Folagbade",
+      "business_type": "local_buka",
+      "current_ordering_methods": [
+        "walk_in",
+        "phone_calls"
+      ],
+      "fulfillment_options": "pickup_only",
+      "message": "Famous for ofada rice and spicy buka stew.",
+      "consent_accepted": true,
+      "status": "pending_review",
+      "created_at": "2026-10-17T13:02:57.689Z"
+    },
+    {
+      "id": "vnd_1792242220515_bgmda",
+      "business_name": "Ijebu Pot Kitchen",
+      "contact_name": "Mrs. Funke",
+      "phone": "+2348029310565",
+      "neighborhood": "Folagbade",
+      "business_type": "local_buka",
+      "current_ordering_methods": [
+        "walk_in",
+        "phone_calls"
+      ],
+      "fulfillment_options": "pickup_only",
+      "message": "Famous for ofada rice and spicy buka stew.",
+      "consent_accepted": true,
+      "status": "pending_review",
+      "created_at": "2026-10-17T13:03:40.515Z"
+    },
+    {
+      "id": "vnd_1792242265667_keva1",
+      "business_name": "Ijebu Pot Kitchen",
+      "contact_name": "Mrs. Funke",
+      "phone": "+2348027304141",
+      "neighborhood": "Folagbade",
+      "business_type": "local_buka",
+      "current_ordering_methods": [
+        "walk_in",
+        "phone_calls"
+      ],
+      "fulfillment_options": "pickup_only",
+      "message": "Famous for ofada rice and spicy buka stew.",
+      "consent_accepted": true,
+      "status": "pending_review",
+      "created_at": "2026-10-17T13:04:25.667Z"
+    },
+    {
+      "id": "vnd_1792243209186_u8rjb",
+      "business_name": "Ijebu Pot Kitchen",
+      "contact_name": "Mrs. Funke",
+      "phone": "+2348028494849",
+      "neighborhood": "Folagbade",
+      "business_type": "local_buka",
+      "current_ordering_methods": [
+        "walk_in",
+        "phone_calls"
+      ],
+      "fulfillment_options": "pickup_only",
+      "message": "Famous for ofada rice and spicy buka stew.",
+      "consent_accepted": true,
+      "status": "pending_review",
+      "created_at": "2026-10-17T13:20:09.187Z"
+    },
+    {
+      "id": "vnd_1792243239738_d4yw4",
+      "business_name": "Ijebu Pot Kitchen",
+      "contact_name": "Mrs. Funke",
+      "phone": "+2348022020072",
+      "neighborhood": "Folagbade",
+      "business_type": "local_buka",
+      "current_ordering_methods": [
+        "walk_in",
+        "phone_calls"
+      ],
+      "fulfillment_options": "pickup_only",
+      "message": "Famous for ofada rice and spicy buka stew.",
+      "consent_accepted": true,
+      "status": "pending_review",
+      "created_at": "2026-10-17T13:20:39.738Z"
+    },
+    {
+      "id": "vnd_1792243875676_mjulx",
+      "business_name": "Ijebu Pot Kitchen",
+      "contact_name": "Mrs. Funke",
+      "phone": "+2348023093108",
+      "neighborhood": "Folagbade",
+      "business_type": "local_buka",
+      "current_ordering_methods": [
+        "walk_in",
+        "phone_calls"
+      ],
+      "fulfillment_options": "pickup_only",
+      "message": "Famous for ofada rice and spicy buka stew.",
+      "consent_accepted": true,
+      "status": "pending_review",
+      "created_at": "2026-10-17T13:31:15.676Z"
+    },
+    {
+      "id": "vnd_1792243906444_yxah9",
+      "business_name": "Ijebu Pot Kitchen",
+      "contact_name": "Mrs. Funke",
+      "phone": "+2348024123003",
+      "neighborhood": "Folagbade",
+      "business_type": "local_buka",
+      "current_ordering_methods": [
+        "walk_in",
+        "phone_calls"
+      ],
+      "fulfillment_options": "pickup_only",
+      "message": "Famous for ofada rice and spicy buka stew.",
+      "consent_accepted": true,
+      "status": "pending_review",
+      "created_at": "2026-10-17T13:31:46.444Z"
+    },
+    {
+      "id": "vnd_1792243963432_hulxk",
+      "business_name": "Ijebu Pot Kitchen",
+      "contact_name": "Mrs. Funke",
+      "phone": "+2348025884817",
+      "neighborhood": "Folagbade",
+      "business_type": "local_buka",
+      "current_ordering_methods": [
+        "walk_in",
+        "phone_calls"
+      ],
+      "fulfillment_options": "pickup_only",
+      "message": "Famous for ofada rice and spicy buka stew.",
+      "consent_accepted": true,
+      "status": "pending_review",
+      "created_at": "2026-10-17T13:32:43.432Z"
+    },
+    {
+      "id": "vnd_1792245301728_18bwu",
+      "business_name": "Ijebu Pot Kitchen",
+      "contact_name": "Mrs. Funke",
+      "phone": "+2348026025478",
+      "neighborhood": "Folagbade",
+      "business_type": "local_buka",
+      "current_ordering_methods": [
+        "walk_in",
+        "phone_calls"
+      ],
+      "fulfillment_options": "pickup_only",
+      "message": "Famous for ofada rice and spicy buka stew.",
+      "consent_accepted": true,
+      "status": "pending_review",
+      "created_at": "2026-10-17T13:55:01.728Z"
+    },
+    {
+      "id": "vnd_1792245387730_108wi",
+      "business_name": "Ijebu Pot Kitchen",
+      "contact_name": "Mrs. Funke",
+      "phone": "+2348028578363",
+      "neighborhood": "Folagbade",
+      "business_type": "local_buka",
+      "current_ordering_methods": [
+        "walk_in",
+        "phone_calls"
+      ],
+      "fulfillment_options": "pickup_only",
+      "message": "Famous for ofada rice and spicy buka stew.",
+      "consent_accepted": true,
+      "status": "pending_review",
+      "created_at": "2026-10-17T13:56:27.730Z"
+    },
+    {
+      "id": "vnd_1792245443519_oh0w4",
+      "business_name": "Ijebu Pot Kitchen",
+      "contact_name": "Mrs. Funke",
+      "phone": "+2348023291128",
+      "neighborhood": "Folagbade",
+      "business_type": "local_buka",
+      "current_ordering_methods": [
+        "walk_in",
+        "phone_calls"
+      ],
+      "fulfillment_options": "pickup_only",
+      "message": "Famous for ofada rice and spicy buka stew.",
+      "consent_accepted": true,
+      "status": "pending_review",
+      "created_at": "2026-10-17T13:57:23.519Z"
+    },
+    {
+      "id": "vnd_1792245482548_trmil",
+      "business_name": "Ijebu Pot Kitchen",
+      "contact_name": "Mrs. Funke",
+      "phone": "+2348021330335",
+      "neighborhood": "Folagbade",
+      "business_type": "local_buka",
+      "current_ordering_methods": [
+        "walk_in",
+        "phone_calls"
+      ],
+      "fulfillment_options": "pickup_only",
+      "message": "Famous for ofada rice and spicy buka stew.",
+      "consent_accepted": true,
+      "status": "pending_review",
+      "created_at": "2026-10-17T13:58:02.551Z"
+    }
+  ],
+  "contacts": [
+    {
+      "id": "msg_1792238739794_jx0ed",
+      "name": "Babatunde O.",
+      "contact_info": "+2348031112233",
+      "subject": "Vendor Inquiry",
+      "message": "We would love to know more about the vendor rollout timeline in Degun.",
+      "created_at": "2026-10-17T12:05:39.794Z"
+    },
+    {
+      "id": "msg_1792239695009_64vcm",
+      "name": "Babatunde O.",
+      "contact_info": "+2348031112233",
+      "subject": "Vendor Inquiry",
+      "message": "We would love to know more about the vendor rollout timeline in Degun.",
+      "created_at": "2026-10-17T12:21:35.009Z"
+    },
+    {
+      "id": "msg_1792241082932_v0yic",
+      "name": "Babatunde O.",
+      "contact_info": "+2348031112233",
+      "subject": "Vendor Inquiry",
+      "message": "We would love to know more about the vendor rollout timeline in Degun.",
+      "created_at": "2026-10-17T12:44:42.932Z"
+    },
+    {
+      "id": "msg_1792242130530_owxz1",
+      "name": "Babatunde O.",
+      "contact_info": "+2348031112233",
+      "subject": "Vendor Inquiry",
+      "message": "We would love to know more about the vendor rollout timeline in Degun.",
+      "created_at": "2026-10-17T13:02:10.530Z"
+    },
+    {
+      "id": "msg_1792242177697_oddkh",
+      "name": "Babatunde O.",
+      "contact_info": "+2348031112233",
+      "subject": "Vendor Inquiry",
+      "message": "We would love to know more about the vendor rollout timeline in Degun.",
+      "created_at": "2026-10-17T13:02:57.697Z"
+    },
+    {
+      "id": "msg_1792242220519_f4a7y",
+      "name": "Babatunde O.",
+      "contact_info": "+2348031112233",
+      "subject": "Vendor Inquiry",
+      "message": "We would love to know more about the vendor rollout timeline in Degun.",
+      "created_at": "2026-10-17T13:03:40.520Z"
+    },
+    {
+      "id": "msg_1792242265673_a05b4",
+      "name": "Babatunde O.",
+      "contact_info": "+2348031112233",
+      "subject": "Vendor Inquiry",
+      "message": "We would love to know more about the vendor rollout timeline in Degun.",
+      "created_at": "2026-10-17T13:04:25.673Z"
+    },
+    {
+      "id": "msg_1792243209195_ii6pa",
+      "name": "Babatunde O.",
+      "contact_info": "+2348031112233",
+      "subject": "Vendor Inquiry",
+      "message": "We would love to know more about the vendor rollout timeline in Degun.",
+      "created_at": "2026-10-17T13:20:09.195Z"
+    },
+    {
+      "id": "msg_1792243239747_nyu5t",
+      "name": "Babatunde O.",
+      "contact_info": "+2348031112233",
+      "subject": "Vendor Inquiry",
+      "message": "We would love to know more about the vendor rollout timeline in Degun.",
+      "created_at": "2026-10-17T13:20:39.748Z"
+    },
+    {
+      "id": "msg_1792243875815_6ny5h",
+      "name": "Babatunde O.",
+      "contact_info": "+2348031112233",
+      "subject": "Vendor Inquiry",
+      "message": "We would love to know more about the vendor rollout timeline in Degun.",
+      "created_at": "2026-10-17T13:31:15.816Z"
+    },
+    {
+      "id": "msg_1792243906467_xsh57",
+      "name": "Babatunde O.",
+      "contact_info": "+2348031112233",
+      "subject": "Vendor Inquiry",
+      "message": "We would love to know more about the vendor rollout timeline in Degun.",
+      "created_at": "2026-10-17T13:31:46.467Z"
+    },
+    {
+      "id": "msg_1792243963440_k4e0r",
+      "name": "Babatunde O.",
+      "contact_info": "+2348031112233",
+      "subject": "Vendor Inquiry",
+      "message": "We would love to know more about the vendor rollout timeline in Degun.",
+      "created_at": "2026-10-17T13:32:43.440Z"
+    },
+    {
+      "id": "msg_1792245302367_9yf0u",
+      "name": "Babatunde O.",
+      "contact_info": "+2348031112233",
+      "subject": "Vendor Inquiry",
+      "message": "We would love to know more about the vendor rollout timeline in Degun.",
+      "created_at": "2026-10-17T13:55:02.367Z"
+    },
+    {
+      "id": "msg_1792245387747_f6v9i",
+      "name": "Babatunde O.",
+      "contact_info": "+2348031112233",
+      "subject": "Vendor Inquiry",
+      "message": "We would love to know more about the vendor rollout timeline in Degun.",
+      "created_at": "2026-10-17T13:56:27.747Z"
+    },
+    {
+      "id": "msg_1792245443525_j78vp",
+      "name": "Babatunde O.",
+      "contact_info": "+2348031112233",
+      "subject": "Vendor Inquiry",
+      "message": "We would love to know more about the vendor rollout timeline in Degun.",
+      "created_at": "2026-10-17T13:57:23.525Z"
+    },
+    {
+      "id": "msg_1792245482560_0aa1e",
+      "name": "Babatunde O.",
+      "contact_info": "+2348031112233",
+      "subject": "Vendor Inquiry",
+      "message": "We would love to know more about the vendor rollout timeline in Degun.",
+      "created_at": "2026-10-17T13:58:02.560Z"
+    }
+  ],
   "metadata": {
     "createdAt": "2026-10-16T18:11:00.000Z",
     "version": "1.1.0",

@@ -198,6 +198,9 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
           <p className="text-sm sm:text-base text-[#20231F]/80 max-w-lg mx-auto leading-relaxed">
             Register your interest in wá jẹun and hear when local food discovery and ordering become available in Ijebu Ode.
           </p>
+          <p className="text-sm text-[#20231F]/65">
+            Want a wá jẹun account? <Link to="/auth?mode=signup" className="font-semibold text-[#123B2A] underline underline-offset-2">Create one</Link> or <Link to="/auth?mode=signin" className="font-semibold text-[#123B2A] underline underline-offset-2">sign in</Link>. The launch list form below remains available without an account.
+          </p>
         </div>
 
         {/* Cross-Audience Switcher Banner */}

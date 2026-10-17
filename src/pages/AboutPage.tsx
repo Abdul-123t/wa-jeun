@@ -148,14 +148,14 @@ export const AboutPage: React.FC = () => {
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
               to="/customer-register"
-              className="min-h-[44px] px-6 py-2.5 text-xs font-bold text-[#123B2A] bg-[#B8D94B] hover:bg-[#a7c93e] rounded-xl flex items-center justify-center gap-1.5"
+              className="min-h-11 px-6 py-2.5 text-xs font-bold text-[#123B2A] bg-[#B8D94B] hover:bg-[#a7c93e] rounded-xl flex items-center justify-center gap-1.5"
             >
               <span>Join Customer Launch List</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
             <Link
               to="/vendor-register"
-              className="min-h-[44px] px-6 py-2.5 text-xs font-bold text-white border border-white/20 hover:border-white rounded-xl flex items-center justify-center"
+              className="min-h-11 px-6 py-2.5 text-xs font-bold text-white border border-white/20 hover:border-white rounded-xl flex items-center justify-center"
             >
               Register Food Business
             </Link>
