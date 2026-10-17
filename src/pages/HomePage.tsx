@@ -1,15 +1,16 @@
+import heroImage from '../assets/images/hero_nigerian_jollof_feast_1792169660639.jpg';
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { 
-  ArrowRight, 
-  MapPin, 
-  Store, 
-  ChevronDown, 
-  CheckCircle2, 
-  Utensils, 
-  Search, 
-  Compass, 
-  Clock, 
+import {
+  ArrowRight,
+  MapPin,
+  Store,
+  ChevronDown,
+  CheckCircle2,
+  Utensils,
+  Search,
+  Compass,
+  Clock,
   ShieldCheck,
   ShoppingBag,
   Sparkles,
@@ -90,15 +91,15 @@ export const HomePage: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen">
-      
+
       {/* 1. Hero Section */}
       <section className="relative overflow-hidden pt-8 pb-16 md:pt-14 md:pb-24 border-b border-[#123B2A]/10 bg-[#FFF8E9]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
-            
+
             {/* Left Content */}
             <div className="lg:col-span-7 space-y-6 text-left">
-              
+
               {/* Honest Location & Stage Indicator */}
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#123B2A]/5 text-[#123B2A] text-xs font-semibold">
                 <MapPin className="w-3.5 h-3.5 text-[#123B2A]" />
@@ -158,14 +159,8 @@ export const HomePage: React.FC = () => {
             {/* Right Visual: Nigerian Jollof Feast Photography */}
             <div className="lg:col-span-5 relative">
               <div className="relative rounded-2xl overflow-hidden shadow-xl border border-[#123B2A]/10 bg-white group">
-                <img
-                  src="/src/assets/images/hero_nigerian_jollof_feast_1792169660639.jpg"
-                  alt="Appetizing Nigerian party jollof rice served with fried sweet plantains and grilled chicken"
-                  className="w-full h-80 sm:h-96 object-cover transition-transform duration-500 group-hover:scale-105"
-                  loading="eager"
-                  referrerPolicy="no-referrer"
-                />
-                
+                src={heroImage}
+
                 {/* Visual card overlay with clear action */}
                 <div className="p-4 bg-white/95 backdrop-blur-sm border-t border-slate-100 flex items-center justify-between">
                   <div>
@@ -332,7 +327,7 @@ export const HomePage: React.FC = () => {
       {/* 3. Food Discovery Categories */}
       <section className="py-16 bg-[#FFF8E9] border-b border-[#123B2A]/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-          
+
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-[#123B2A]">
@@ -345,7 +340,7 @@ export const HomePage: React.FC = () => {
                 Preview the food varieties that will be featured as Ijebu Ode food businesses join.
               </p>
             </div>
-            
+
             <Link
               to="/explore"
               className="inline-flex items-center gap-2 text-sm font-bold text-[#123B2A] hover:text-[#123B2A]/80 focus-visible:outline-none"
@@ -391,7 +386,7 @@ export const HomePage: React.FC = () => {
                       {category.popularItems.slice(0, 3).join(' · ')}
                     </p>
                   </div>
-                  
+
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-[#123B2A]">
                     <span>View upcoming listings</span>
                     <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
@@ -407,7 +402,7 @@ export const HomePage: React.FC = () => {
       {/* 4. How wá jẹun Will Work (Dual-Audience Tab Switcher) */}
       <section id="how-it-works" className="py-16 md:py-20 bg-white border-b border-[#123B2A]/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-          
+
           <div className="text-center max-w-2xl mx-auto space-y-3">
             <span className="text-xs font-bold uppercase tracking-wider text-[#123B2A]">
               Simple & Straightforward
@@ -424,22 +419,20 @@ export const HomePage: React.FC = () => {
               <button
                 onClick={() => setHowItWorksTab('diners')}
                 type="button"
-                className={`min-h-[40px] px-5 text-xs font-bold rounded-lg transition-all ${
-                  howItWorksTab === 'diners'
-                    ? 'bg-white text-[#123B2A] shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`min-h-[40px] px-5 text-xs font-bold rounded-lg transition-all ${howItWorksTab === 'diners'
+                  ? 'bg-white text-[#123B2A] shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 For Food Lovers
               </button>
               <button
                 onClick={() => setHowItWorksTab('vendors')}
                 type="button"
-                className={`min-h-[40px] px-5 text-xs font-bold rounded-lg transition-all ${
-                  howItWorksTab === 'vendors'
-                    ? 'bg-white text-[#123B2A] shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`min-h-[40px] px-5 text-xs font-bold rounded-lg transition-all ${howItWorksTab === 'vendors'
+                  ? 'bg-white text-[#123B2A] shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 For Food Businesses
               </button>
@@ -449,7 +442,7 @@ export const HomePage: React.FC = () => {
           {/* Diners Step Grid */}
           {howItWorksTab === 'diners' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in duration-200">
-              
+
               {/* Step 1 */}
               <div className="space-y-3 p-6 rounded-2xl bg-[#FFF8E9] border border-[#123B2A]/10 relative">
                 <div className="w-10 h-10 rounded-xl bg-[#123B2A] text-white flex items-center justify-center font-bold text-sm">
@@ -508,7 +501,7 @@ export const HomePage: React.FC = () => {
           {/* Vendors Step Grid */}
           {howItWorksTab === 'vendors' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in duration-200">
-              
+
               {/* Step 1 */}
               <div className="space-y-3 p-6 rounded-2xl bg-[#FFF8E9] border border-[#123B2A]/10 relative">
                 <div className="w-10 h-10 rounded-xl bg-[#123B2A] text-white flex items-center justify-center font-bold text-sm">
@@ -579,17 +572,17 @@ export const HomePage: React.FC = () => {
       <section className="py-16 md:py-24 bg-[#123B2A] text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-            
+
             <div className="lg:col-span-8 space-y-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#B8D94B]/20 text-[#B8D94B] text-xs font-bold uppercase tracking-wider">
                 <Store className="w-3.5 h-3.5" />
                 <span>Founding Vendor Cohort</span>
               </div>
-              
+
               <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight text-white">
                 Your food deserves to be discovered.
               </h2>
-              
+
               <p className="text-base sm:text-lg text-white/80 max-w-2xl leading-relaxed">
                 wá jẹun is preparing a new way for people in Ijebu Ode to discover local food businesses. Tell us about your business and register your interest in joining the first group of vendors.
               </p>
@@ -666,7 +659,7 @@ export const HomePage: React.FC = () => {
       {/* 6. Frequently Asked Questions with Fast Category Filters */}
       <section id="faq" className="py-16 md:py-20 bg-[#FFF8E9] border-b border-[#123B2A]/10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-          
+
           <div className="text-center space-y-2">
             <span className="text-xs font-bold uppercase tracking-wider text-[#123B2A]">
               Frequently Asked Questions
@@ -683,44 +676,40 @@ export const HomePage: React.FC = () => {
               <button
                 onClick={() => setFaqFilter('all')}
                 type="button"
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                  faqFilter === 'all'
-                    ? 'bg-[#123B2A] text-white'
-                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-                }`}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${faqFilter === 'all'
+                  ? 'bg-[#123B2A] text-white'
+                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                  }`}
               >
                 All Questions
               </button>
               <button
                 onClick={() => setFaqFilter('diners')}
                 type="button"
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                  faqFilter === 'diners'
-                    ? 'bg-[#123B2A] text-white'
-                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-                }`}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${faqFilter === 'diners'
+                  ? 'bg-[#123B2A] text-white'
+                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                  }`}
               >
                 For Customers
               </button>
               <button
                 onClick={() => setFaqFilter('vendors')}
                 type="button"
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                  faqFilter === 'vendors'
-                    ? 'bg-[#123B2A] text-white'
-                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-                }`}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${faqFilter === 'vendors'
+                  ? 'bg-[#123B2A] text-white'
+                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                  }`}
               >
                 For Food Businesses
               </button>
               <button
                 onClick={() => setFaqFilter('delivery')}
                 type="button"
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                  faqFilter === 'delivery'
-                    ? 'bg-[#123B2A] text-white'
-                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-                }`}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${faqFilter === 'delivery'
+                  ? 'bg-[#123B2A] text-white'
+                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                  }`}
               >
                 Delivery & Pickup
               </button>
@@ -742,9 +731,8 @@ export const HomePage: React.FC = () => {
                   >
                     <span>{faq.q}</span>
                     <ChevronDown
-                      className={`w-4 h-4 shrink-0 transition-transform duration-200 text-[#123B2A] ${
-                        isOpen ? 'rotate-180' : ''
-                      }`}
+                      className={`w-4 h-4 shrink-0 transition-transform duration-200 text-[#123B2A] ${isOpen ? 'rotate-180' : ''
+                        }`}
                     />
                   </button>
 
@@ -764,7 +752,7 @@ export const HomePage: React.FC = () => {
       {/* 7. Bottom Dual-Audience Conversion Cards */}
       <section className="py-16 bg-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 text-center">
-          
+
           <div className="space-y-2">
             <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#123B2A]">
               Ready to be part of wá jẹun's journey?
