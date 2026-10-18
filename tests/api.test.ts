@@ -507,8 +507,15 @@ async function runTests() {
   }
   assert(adminRouteCalled, 'Admin list route test completed');
   const navbarSource = readFileSync(new URL('../src/components/Navbar.tsx', import.meta.url), 'utf8');
+  const footerSource = readFileSync(new URL('../src/components/Footer.tsx', import.meta.url), 'utf8');
+  const homeSource = readFileSync(new URL('../src/pages/HomePage.tsx', import.meta.url), 'utf8');
+  const customerRegistrationSource = readFileSync(new URL('../src/pages/CustomerRegistrationPage.tsx', import.meta.url), 'utf8');
+  const vendorRegistrationSource = readFileSync(new URL('../src/pages/VendorRegistrationPage.tsx', import.meta.url), 'utf8');
   const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
   assert(navbarSource.includes('isVerifiedMember(user.id, adminUserId)') && navbarSource.includes('isVerifiedMember(user.id, vendorUserId)'), 'Navigation links depend on server-verified membership for the current user');
+  assert((navbarSource.match(/to="\/vendor-register"/g)?.length || 0) >= 2 && (navbarSource.match(/to="\/customer-register"/g)?.length || 0) >= 2 && footerSource.includes('/customer-register') && footerSource.includes('/vendor-register'), 'Separate customer and vendor onboarding links remain in desktop/mobile navigation and the shared footer');
+  assert(homeSource.includes('Customer ordering is not available yet') && homeSource.includes('to="/explore"') && !homeSource.includes('popularItems') && vendorRegistrationSource.includes('Approval is required before your storefront can accept orders.'), 'Concise public pages preserve truthful ordering status and vendor approval expectations');
+  assert(customerRegistrationSource.includes('htmlFor="customer-name"') && customerRegistrationSource.includes('role="alert"') && vendorRegistrationSource.includes('htmlFor="vendor-biz-name"') && vendorRegistrationSource.includes('role="alert"') && vendorRegistrationSource.includes('Sign in to submit application'), 'Customer and vendor forms retain labelled fields, announced errors, and authenticated vendor submission');
   assert(appSource.includes('<AdminRoute />') && appSource.includes('getAdminAccessViewState({ permissionsLoading, userId: user?.id, adminUserId'), 'Direct /admin navigation checks verified membership before mounting admin content');
   assert(appSource.includes('adminPermissionError') && appSource.includes('retryPermissionCheck'), 'Admin permission API failures are visible and can be retried instead of being shown as a false denial');
   const menuCreateLayer = (app as any)._router.stack.find((layer: any) => layer.route?.path === '/api/vendor/businesses/:businessId/menu' && layer.route.methods.post);

@@ -137,10 +137,10 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
           <div className="bg-[#FFF8E9] p-5 rounded-xl border border-[#123B2A]/10 text-left space-y-2 text-xs sm:text-sm text-[#20231F]/80">
             <div className="font-bold text-[#123B2A] flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-[#123B2A]" />
-              <span>What happens next?</span>
+              <span>Your details</span>
             </div>
             <p className="leading-relaxed">
-              We are working directly with food businesses and bukas in Ijebu Ode. Once vendors in your area (<strong>{neighborhood === 'Other Neighborhood in Ijebu Ode' ? customNeighborhood : neighborhood}</strong>) complete onboarding, we will reach out to you via your preferred channel (<strong>{contactMethod === 'phone' ? 'WhatsApp/Phone' : 'Email'}</strong>).
+              Your interest is recorded for <strong>{neighborhood === 'Other Neighborhood in Ijebu Ode' ? customNeighborhood : neighborhood}</strong>. Your selected contact channel is <strong>{contactMethod === 'phone' ? 'WhatsApp/Phone' : 'Email'}</strong>.
             </p>
             {successData.registrationId && (
               <p className="text-[11px] text-slate-500 pt-2 border-t border-[#123B2A]/10 font-mono">
@@ -199,29 +199,15 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
             Register your interest in wá jẹun and hear when local food discovery and ordering become available in Ijebu Ode.
           </p>
           <p className="text-sm text-[#20231F]/65">
-            Want a wá jẹun account? <Link to="/auth?mode=signup" className="font-semibold text-[#123B2A] underline underline-offset-2">Create one</Link> or <Link to="/auth?mode=signin" className="font-semibold text-[#123B2A] underline underline-offset-2">sign in</Link>. The launch list form below remains available without an account.
+            No account needed. <Link to="/auth?mode=signup" className="font-semibold text-[#123B2A] underline underline-offset-2">Create an account</Link> or <Link to="/auth?mode=signin" className="font-semibold text-[#123B2A] underline underline-offset-2">sign in</Link> to use the marketplace.
           </p>
-        </div>
-
-        {/* Cross-Audience Switcher Banner */}
-        <div className="p-3.5 rounded-xl bg-white border border-[#123B2A]/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-xs">
-          <span className="text-[#20231F]/80 font-medium">
-            Are you a restaurant, buka, or caterer looking to join our founding vendor cohort?
-          </span>
-          <Link
-            to="/vendor-register"
-            className="text-xs font-bold text-[#123B2A] hover:underline whitespace-nowrap shrink-0 flex items-center gap-1"
-          >
-            <span>Register Food Business</span>
-            <ArrowRight className="w-3 h-3" />
-          </Link>
         </div>
 
         {/* Registration Card */}
         <div className="bg-white rounded-2xl border border-[#123B2A]/10 shadow-sm p-6 sm:p-10 space-y-6">
           
           {apiError && (
-            <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3 text-xs sm:text-sm text-red-800">
+            <div role="alert" className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3 text-xs sm:text-sm text-red-800">
               <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <p className="font-bold">Submission Failed</p>
@@ -248,7 +234,7 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
                 }`}
               />
               {fieldErrors.name && (
-                <p className="text-xs text-red-600 font-medium">{fieldErrors.name}</p>
+                <p role="alert" className="text-xs text-red-600 font-medium">{fieldErrors.name}</p>
               )}
             </div>
 
@@ -306,7 +292,7 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
                   We'll only message you about the wá jẹun rollout in Ijebu Ode.
                 </p>
                 {fieldErrors.phone && (
-                  <p className="text-xs text-red-600 font-medium">{fieldErrors.phone}</p>
+                  <p role="alert" className="text-xs text-red-600 font-medium">{fieldErrors.phone}</p>
                 )}
               </div>
             ) : (
@@ -325,7 +311,7 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
                   }`}
                 />
                 {fieldErrors.email && (
-                  <p className="text-xs text-red-600 font-medium">{fieldErrors.email}</p>
+                  <p role="alert" className="text-xs text-red-600 font-medium">{fieldErrors.email}</p>
                 )}
               </div>
             )}
@@ -360,7 +346,7 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
               )}
 
               {fieldErrors.neighborhood && (
-                <p className="text-xs text-red-600 font-medium">{fieldErrors.neighborhood}</p>
+                <p role="alert" className="text-xs text-red-600 font-medium">{fieldErrors.neighborhood}</p>
               )}
             </div>
 
@@ -408,7 +394,7 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
                 </span>
               </label>
               {fieldErrors.consent && (
-                <p className="text-xs text-red-600 font-medium mt-1">{fieldErrors.consent}</p>
+                <p role="alert" className="text-xs text-red-600 font-medium mt-1">{fieldErrors.consent}</p>
               )}
             </div>
 

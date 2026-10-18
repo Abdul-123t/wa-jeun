@@ -10,8 +10,6 @@ import {
   MapPin, 
   ShieldCheck, 
   Loader2, 
-  Truck, 
-  ShoppingBag,
   Info
 } from 'lucide-react';
 import { IJEBU_ODE_AREAS } from '../data/categories';
@@ -147,10 +145,10 @@ export const VendorRegistrationPage: React.FC = () => {
           <div className="bg-[#FFF8E9] p-5 rounded-xl border border-[#123B2A]/10 text-left space-y-2 text-xs sm:text-sm text-[#20231F]/80">
             <div className="font-bold text-[#123B2A] flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-[#123B2A]" />
-              <span>Next Steps for Your Business</span>
+              <span>Application details</span>
             </div>
             <p className="leading-relaxed">
-              Our Ijebu Ode onboarding team will review your application for <strong>{businessName}</strong> and contact you via WhatsApp/Phone (<strong>{phone}</strong>) to discuss menu digitization, operating hours, and how customer pickup or vendor delivery will work.
+              We received the application for <strong>{businessName}</strong>. It will be reviewed; submission is not approval, and the storefront cannot accept orders until approved and set up.
             </p>
             <p className="text-[11px] text-slate-500 pt-2 border-t border-[#123B2A]/10">
               Note: This registration expresses interest and does not yet constitute commercial approval or a binding contract.
@@ -204,7 +202,11 @@ export const VendorRegistrationPage: React.FC = () => {
           </h1>
 
           <p className="text-sm sm:text-base text-[#20231F]/80 max-w-xl mx-auto leading-relaxed">
+<<<<<<< Updated upstream
             We're preparing our first group of food businesses for Ijebu Ode. Register your interest so we can learn about your business and contact you about onboarding.
+=======
+            Apply to create your business profile. Our team reviews each application before a storefront can accept orders.
+>>>>>>> Stashed changes
           </p>
           {authLoading ? (
             <p role="status" className="mx-auto max-w-xl text-sm text-[#20231F]/60">Restoring your account session…</p>
@@ -215,20 +217,6 @@ export const VendorRegistrationPage: React.FC = () => {
               You can apply without an account. <Link to="/auth?mode=signin" className="font-semibold text-[#123B2A] underline underline-offset-2">Sign in</Link> or <Link to="/auth?mode=signup" className="font-semibold text-[#123B2A] underline underline-offset-2">create an account</Link> before submitting to link your application.
             </p>
           )}
-        </div>
-
-        {/* Cross-Audience Switcher Banner */}
-        <div className="p-3.5 rounded-xl bg-white border border-[#123B2A]/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-xs">
-          <span className="text-[#20231F]/80 font-medium">
-            Are you a customer looking to discover food and get notified when ordering opens?
-          </span>
-          <Link
-            to="/customer-register"
-            className="text-xs font-bold text-[#123B2A] hover:underline whitespace-nowrap shrink-0 flex items-center gap-1"
-          >
-            <span>Join Customer Launch List</span>
-            <ArrowRight className="w-3 h-3" />
-          </Link>
         </div>
 
         {/* Form Container */}
@@ -243,7 +231,7 @@ export const VendorRegistrationPage: React.FC = () => {
           </div>
 
           {apiError && (
-            <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3 text-xs sm:text-sm text-red-800">
+            <div role="alert" className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3 text-xs sm:text-sm text-red-800">
               <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
               <div>
                 <p className="font-bold">Submission Notice</p>
@@ -272,7 +260,7 @@ export const VendorRegistrationPage: React.FC = () => {
                   }`}
                 />
                 {fieldErrors.businessName && (
-                  <p className="text-xs text-red-600 font-medium">{fieldErrors.businessName}</p>
+                  <p role="alert" className="text-xs text-red-600 font-medium">{fieldErrors.businessName}</p>
                 )}
               </div>
 
@@ -291,7 +279,7 @@ export const VendorRegistrationPage: React.FC = () => {
                   }`}
                 />
                 {fieldErrors.contactName && (
-                  <p className="text-xs text-red-600 font-medium">{fieldErrors.contactName}</p>
+                  <p role="alert" className="text-xs text-red-600 font-medium">{fieldErrors.contactName}</p>
                 )}
               </div>
 
@@ -315,7 +303,7 @@ export const VendorRegistrationPage: React.FC = () => {
                   }`}
                 />
                 {fieldErrors.phone && (
-                  <p className="text-xs text-red-600 font-medium">{fieldErrors.phone}</p>
+                  <p role="alert" className="text-xs text-red-600 font-medium">{fieldErrors.phone}</p>
                 )}
               </div>
 
@@ -334,7 +322,7 @@ export const VendorRegistrationPage: React.FC = () => {
                   }`}
                 />
                 {fieldErrors.email && (
-                  <p className="text-xs text-red-600 font-medium">{fieldErrors.email}</p>
+                  <p role="alert" className="text-xs text-red-600 font-medium">{fieldErrors.email}</p>
                 )}
               </div>
 
@@ -370,7 +358,7 @@ export const VendorRegistrationPage: React.FC = () => {
               )}
 
               {fieldErrors.neighborhood && (
-                <p className="text-xs text-red-600 font-medium">{fieldErrors.neighborhood}</p>
+                <p role="alert" className="text-xs text-red-600 font-medium">{fieldErrors.neighborhood}</p>
               )}
             </div>
 
@@ -516,7 +504,7 @@ export const VendorRegistrationPage: React.FC = () => {
                 </span>
               </label>
               {fieldErrors.consent && (
-                <p className="text-xs text-red-600 font-medium mt-1">{fieldErrors.consent}</p>
+                <p role="alert" className="text-xs text-red-600 font-medium mt-1">{fieldErrors.consent}</p>
               )}
             </div>
 
@@ -545,6 +533,7 @@ export const VendorRegistrationPage: React.FC = () => {
 
         </div>
 
+<<<<<<< Updated upstream
         {/* Onboarding Roadmap: What Happens After You Register */}
         <div className="bg-white rounded-2xl border border-[#123B2A]/10 p-6 sm:p-8 space-y-6">
           <div className="space-y-1">
@@ -622,6 +611,11 @@ export const VendorRegistrationPage: React.FC = () => {
             </div>
           </div>
         </div>
+=======
+        <p className="rounded-xl border border-[#123B2A]/10 bg-white p-4 text-sm leading-6 text-[#20231F]/75">
+          After you apply, the team will review your business. Approval is required before your storefront can accept orders.
+        </p>
+>>>>>>> Stashed changes
 
       </div>
     </div>

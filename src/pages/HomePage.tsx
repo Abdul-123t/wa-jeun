@@ -1,4 +1,8 @@
+import React from 'react';
+import { ArrowRight, MapPin, Store } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import heroImage from '../assets/images/hero_nigerian_jollof_feast_1792169660639.jpg';
+<<<<<<< Updated upstream
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -185,222 +189,53 @@ export const HomePage: React.FC = () => {
                 </div>
               </div>
             </div>
+=======
+>>>>>>> Stashed changes
 
+export const HomePage: React.FC = () => (
+  <div className="bg-[#FFF8E9]">
+    <section className="border-b border-[#123B2A]/10 py-9 sm:py-14">
+      <div className="mx-auto grid max-w-7xl items-center gap-8 px-4 sm:px-6 lg:grid-cols-2 lg:gap-12 lg:px-8">
+        <div>
+          <p className="inline-flex items-center gap-2 rounded-full bg-[#123B2A]/5 px-3 py-1.5 text-xs font-semibold text-[#123B2A]"><MapPin className="h-3.5 w-3.5" aria-hidden="true"/>Ijebu Ode, Ogun State</p>
+          <h1 className="mt-5 max-w-xl font-display text-4xl font-extrabold leading-tight tracking-tight text-[#123B2A] sm:text-5xl">Built in Ijebu. Made for Ijebu.</h1>
+          <p className="mt-4 max-w-xl text-base leading-7 text-[#20231F]/75">Your City. Your Food. Discover local food businesses as they join wá jẹun.</p>
+          <p className="mt-3 text-sm font-semibold text-[#123B2A]">Vendor onboarding is open. Customer ordering is not available yet.</p>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <Link to="/explore" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#123B2A] px-5 text-sm font-bold text-white hover:bg-[#194d37] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A] focus-visible:ring-offset-2">Explore food <ArrowRight className="h-4 w-4" aria-hidden="true"/></Link>
+            <Link to="/customer-register" className="inline-flex min-h-12 items-center justify-center rounded-xl bg-[#B8D94B] px-5 text-sm font-bold text-[#123B2A] hover:bg-[#a7c93e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A] focus-visible:ring-offset-2">Join the launch list</Link>
+          </div>
+          <Link to="/vendor-register" className="mt-4 inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[#123B2A] underline decoration-[#123B2A]/30 underline-offset-4 hover:decoration-[#123B2A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]"><Store className="h-4 w-4" aria-hidden="true"/>Register a food business</Link>
+        </div>
+        <div className="overflow-hidden rounded-2xl border border-[#123B2A]/10 bg-white shadow-sm">
+          <img src={heroImage} alt="Nigerian jollof rice with grilled chicken and plantain" className="h-64 w-full object-cover sm:h-80" fetchPriority="high" />
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <p className="text-sm font-semibold text-[#123B2A]">Local food discovery, starting in Ijebu Ode.</p>
+            <Link to="/explore" className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-[#123B2A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]">Browse directory <ArrowRight className="h-4 w-4" aria-hidden="true"/></Link>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      {/* 2. Pre-Launch Preparation — Progress Timeline */}
-      <section className="bg-white py-16 md:py-20 border-b border-[#123B2A]/10 overflow-hidden">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-
-          {/* ── Header ── */}
-          <div className="text-center space-y-4 max-w-2xl mx-auto mb-12 md:mb-14">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#123B2A]/5 text-[#123B2A] text-[11px] font-bold tracking-wider uppercase">
-              <Clock className="w-3.5 h-3.5" />
-              Pre-Launch Preparation
-            </span>
-
-            <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#123B2A] tracking-tight leading-[1.15]">
-              Ijebu Ode's local food scene deserves to be discovered.
-            </h2>
-
-            <p className="text-sm sm:text-base text-[#20231F]/75 leading-relaxed max-w-xl mx-auto">
-              We're preparing Wá Jẹun, a new way to discover local food businesses in Ijebu Ode. We're getting the platform ready and inviting our first food vendors to join us before public ordering begins.
-            </p>
-          </div>
-
-          {/* ── Timeline phases ── */}
-          <div className="relative grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-5 lg:gap-6">
-
-            {/* ── Horizontal progress connector (desktop) ── */}
-            <div className="hidden md:block absolute top-11 left-[calc(16.67%+12px)] right-[calc(16.67%+12px)] h-0.5 z-0" aria-hidden="true">
-              {/* Track */}
-              <div className="absolute inset-0 bg-[#123B2A]/8 rounded-full" />
-              {/* Filled progress — through Phase 1 + halfway into Phase 2 */}
-              <div className="absolute left-0 top-0 bottom-0 w-[62%] bg-linear-to-r from-[#B8D94B] to-[#B8D94B]/60 rounded-full" />
-            </div>
-
-            {/* ── Phase 1: Platform Preparation ── */}
-            <div className="relative z-10 group">
-              {/* Step indicator */}
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-[#123B2A] text-white flex items-center justify-center shrink-0 shadow-sm">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-                <div className="flex-1 flex items-center justify-between md:justify-start md:gap-2">
-                  <span className="text-[11px] font-bold text-[#123B2A]/50 uppercase tracking-wider">Phase 1</span>
-                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-full">
-                    Ready
-                  </span>
-                </div>
-                {/* Mobile vertical connector */}
-                <div className="md:hidden absolute left-4.75 top-13 bottom-0 w-0.5 bg-linear-to-b from-[#B8D94B] to-[#B8D94B]/40 rounded-full" aria-hidden="true" />
-              </div>
-              {/* Card */}
-              <div className="ml-0 md:ml-0 p-5 rounded-2xl bg-[#FFF8E9] border border-[#123B2A]/10 space-y-2 transition-shadow duration-200 hover:shadow-md group-focus-within:shadow-md">
-                <h3 className="font-display text-base font-bold text-[#123B2A]">
-                  Platform Preparation
-                </h3>
-                <p className="text-xs text-[#20231F]/70 leading-relaxed">
-                  Building the foundation for restaurant discovery, digital menus, and local food listings.
-                </p>
-              </div>
-            </div>
-
-            {/* ── Phase 2: Meet Our First Vendors ── */}
-            <div className="relative z-10 group">
-              {/* Step indicator */}
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-[#B8D94B] text-[#123B2A] flex items-center justify-center shrink-0 shadow-sm ring-[3px] ring-[#B8D94B]/25">
-                  <Store className="w-5 h-5" />
-                </div>
-                <div className="flex-1 flex items-center justify-between md:justify-start md:gap-2">
-                  <span className="text-[11px] font-bold text-[#123B2A]/50 uppercase tracking-wider">Phase 2</span>
-                  <span className="text-[11px] font-bold text-[#123B2A] bg-[#B8D94B]/30 border border-[#B8D94B]/50 px-2.5 py-0.5 rounded-full">
-                    In Progress
-                  </span>
-                </div>
-                {/* Mobile vertical connector */}
-                <div className="md:hidden absolute left-4.75 top-13 bottom-0 w-0.5 bg-[#123B2A]/8 rounded-full" aria-hidden="true" />
-              </div>
-              {/* Card — elevated for current phase */}
-              <div className="ml-0 md:ml-0 p-5 rounded-2xl bg-white border-2 border-[#B8D94B]/40 shadow-sm space-y-2 transition-shadow duration-200 hover:shadow-md group-focus-within:shadow-md">
-                <h3 className="font-display text-base font-bold text-[#123B2A]">
-                  Meet Our First Vendors
-                </h3>
-                <p className="text-xs text-[#20231F]/70 leading-relaxed">
-                  We're inviting bukas, restaurants, grills, bakeries, and other food businesses in Ijebu Ode to express interest in joining Wá Jẹun.
-                </p>
-              </div>
-            </div>
-
-            {/* ── Phase 3: Online Ordering ── */}
-            <div className="relative z-10 group">
-              {/* Step indicator */}
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center shrink-0 border border-slate-200">
-                  <ShoppingBag className="w-5 h-5" />
-                </div>
-                <div className="flex-1 flex items-center justify-between md:justify-start md:gap-2">
-                  <span className="text-[11px] font-bold text-[#123B2A]/50 uppercase tracking-wider">Phase 3</span>
-                  <span className="text-[11px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full">
-                    Upcoming
-                  </span>
-                </div>
-              </div>
-              {/* Card */}
-              <div className="ml-0 md:ml-0 p-5 rounded-2xl bg-[#FFF8E9] border border-[#123B2A]/8 space-y-2 opacity-90 transition-shadow duration-200 hover:shadow-md hover:opacity-100 group-focus-within:shadow-md group-focus-within:opacity-100">
-                <h3 className="font-display text-base font-bold text-[#123B2A]">
-                  Online Ordering
-                </h3>
-                <p className="text-xs text-[#20231F]/70 leading-relaxed">
-                  We're preparing for customers to explore menus, view food prices, and place orders for pickup or vendor-managed delivery as these features become available.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Supporting note ── */}
-          <p className="mt-6 text-[11px] sm:text-xs text-[#20231F]/50 text-center leading-relaxed max-w-lg mx-auto">
-            Expressing interest does not guarantee acceptance or immediate access to ordering.
-          </p>
-
-          {/* ── CTAs ── */}
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link
-              to="/vendor-register"
-              className="min-h-12 px-7 py-3 text-sm font-bold text-[#123B2A] bg-[#B8D94B] hover:bg-[#a9cc38] rounded-xl shadow-sm hover:shadow-md transition-all duration-200 ease-out hover:-translate-y-px active:translate-y-0 active:scale-[0.98] flex items-center justify-center gap-2 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A] focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
-            >
-              <Store className="w-4 h-4" />
-              <span>Register Your Food Business</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              to="/explore"
-              className="min-h-12 px-6 py-3 text-sm font-bold text-[#123B2A] bg-white border border-[#123B2A]/15 hover:border-[#123B2A]/40 rounded-xl transition-all duration-200 ease-out hover:shadow-sm active:scale-[0.98] flex items-center justify-center gap-1.5 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A] focus-visible:ring-offset-2 motion-reduce:transition-none"
-            >
-              <Compass className="w-4 h-4" />
-              <span>Explore Wá Jẹun</span>
-            </Link>
-          </div>
-
+    <section id="how-it-works" className="border-b border-[#123B2A]/10 bg-white py-10 sm:py-14">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="max-w-2xl">
+          <p className="text-xs font-bold uppercase tracking-[.14em] text-[#123B2A]/60">Getting started</p>
+          <h2 className="mt-2 font-display text-2xl font-bold text-[#123B2A] sm:text-3xl">A local marketplace, built step by step.</h2>
         </div>
-      </section>
-
-      {/* 3. Food Discovery Categories */}
-      <section className="py-16 bg-[#FFF8E9] border-b border-[#123B2A]/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-[#123B2A]">
-                Explore Food Types
-              </p>
-              <h2 className="font-display text-3xl font-extrabold text-[#123B2A] tracking-tight mt-1">
-                What will you crave today?
-              </h2>
-              <p className="text-sm text-[#20231F]/75 mt-1">
-                Preview the food varieties that will be featured as Ijebu Ode food businesses join.
-              </p>
-            </div>
-
-            <Link
-              to="/explore"
-              className="inline-flex items-center gap-2 text-sm font-bold text-[#123B2A] hover:text-[#123B2A]/80 focus-visible:outline-none"
-            >
-              <span>Explore all categories</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-
-          {/* Grid of Categories with Nigerian Food Photography */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {FOOD_CATEGORIES.map((category) => (
-              <div
-                key={category.id}
-                onClick={() => handleCategoryClick(category.id)}
-                className="group cursor-pointer rounded-2xl bg-white border border-[#123B2A]/10 overflow-hidden shadow-sm hover:shadow-md transition-all hover:-translate-y-1 flex flex-col justify-between"
-              >
-                <div className="relative h-44 w-full overflow-hidden bg-slate-100">
-                  <img
-                    src={category.image}
-                    alt={category.name}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = 'none';
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent" />
-                  <div className="absolute bottom-3 left-3 right-3 text-white">
-                    <h3 className="font-bold text-base leading-snug drop-shadow-sm">
-                      {category.name}
-                    </h3>
-                  </div>
-                </div>
-
-                <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                  <div className="space-y-1.5">
-                    <p className="text-xs text-[#20231F]/70 line-clamp-2 leading-relaxed">
-                      {category.description}
-                    </p>
-                    <p className="text-[11px] text-[#123B2A]/80 font-medium line-clamp-1">
-                      {category.popularItems.slice(0, 3).join(' · ')}
-                    </p>
-                  </div>
-
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-[#123B2A]">
-                    <span>View upcoming listings</span>
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <article className="rounded-2xl border border-[#123B2A]/10 bg-[#FFF8E9] p-5">
+            <h3 className="font-display text-lg font-bold text-[#123B2A]">For customers</h3>
+            <p className="mt-2 text-sm leading-6 text-[#20231F]/70">Browse real listings and join the launch list for updates. Ordering will open after vendor and checkout readiness is confirmed.</p>
+            <Link to="/customer-register" className="mt-4 inline-flex min-h-10 items-center gap-2 text-sm font-bold text-[#123B2A] underline underline-offset-4">Get launch updates <ArrowRight className="h-4 w-4" aria-hidden="true"/></Link>
+          </article>
+          <article className="rounded-2xl border border-[#123B2A]/10 bg-[#FFF8E9] p-5">
+            <h3 className="font-display text-lg font-bold text-[#123B2A]">For food businesses</h3>
+            <p className="mt-2 text-sm leading-6 text-[#20231F]/70">Apply to create a storefront. Applications are reviewed before a business can become publicly orderable.</p>
+            <Link to="/vendor-register" className="mt-4 inline-flex min-h-10 items-center gap-2 text-sm font-bold text-[#123B2A] underline underline-offset-4">Become a vendor <ArrowRight className="h-4 w-4" aria-hidden="true"/></Link>
+          </article>
         </div>
+<<<<<<< Updated upstream
       </section>
 
       {/* 4. How wá jẹun Will Work (Dual-Audience Tab Switcher) */}
@@ -814,3 +649,9 @@ export const HomePage: React.FC = () => {
     </div>
   );
 };
+=======
+      </div>
+    </section>
+  </div>
+);
+>>>>>>> Stashed changes

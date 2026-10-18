@@ -94,21 +94,16 @@ The registration, vendor application, customer interest, contact, and checkout l
 
 The repository does not establish the deployed host or proxy topology. The founder must verify the hosting network path and configure the matching mode before deployment; otherwise production startup intentionally fails. Counters are process-local, bounded in memory, and reset by time window or process restart. Multiple server instances do not share counters. If scaling beyond one instance, use a shared atomic store such as Redis with an atomic increment/expiry operation; add it only when multi-instance deployment is needed.
 
-### Testing the MVP Checklist:
-1. **Homepage:** Browse the hero section, click categories to jump to Explore Food, toggle FAQs.
-2. **Customer Registration:** Fill out the early access form (`/customer-register`), test WhatsApp vs. Email validation, select Ijebu Ode neighborhood, and submit. Notice the genuine reference ID and instant persistence.
-3. **Vendor Registration:** Submit an expression of interest for a food business (`/vendor-register`).
-4. **Explore Food:** Search for dishes, apply neighborhood and fulfillment filters, observe the truthful empty state explaining that onboarding is currently underway.
-5. **Contact Form:** Send a message via `/legal?tab=contact` and verify submission.
+### Local MVP checks
+1. **Homepage:** Confirm the customer and vendor paths are clear and the ordering status is stated accurately.
+2. **Customer launch list:** Submit `/customer-register` with phone or email contact and check validation and confirmation.
+3. **Vendor application:** Sign in, submit `/vendor-register`, and confirm that approval is required before public ordering.
+4. **Explore:** Search and filter real vendor records. An empty database should show an empty state, not sample businesses.
+5. **Development test order:** Only use the development flow with an isolated development database. These are unpaid test orders, not real fulfillment requests.
+6. **Contact:** Submit a message via `/legal?tab=contact` in a local environment.
 
 ---
 
-## 6. Features Intentionally Reserved for Post-Onboarding
+## 6. Ordering and payment status
 
-The following capabilities are intentionally NOT simulated with fake data:
-- Fake restaurant menus or fabricated dish prices.
-- Dummy shopping cart or simulated checkout.
-- Mock payment confirmations or fake dispatch tracking.
-- Fabricated reviews, ratings, or sales metrics.
-
-These features will be deployed as verified food businesses in Ijebu Ode complete onboarding.
+The application includes a cart and an authenticated development-only test-order path. Development orders are marked unpaid and must not be fulfilled as real orders. **Production checkout is disabled.** No payment provider, payment verification/webhook, settlement, refund, or reconciliation flow is configured. Do not describe an order as paid until a trusted provider verification has been implemented and verified. Public menus and directory entries must come from real vendor records; do not use sample businesses, prices, ratings, or sales figures.
