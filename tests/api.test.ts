@@ -459,11 +459,21 @@ async function runTests() {
     buildCommand: string; outputDirectory: string; rewrites: Array<{ source: string; destination: string }>;
   };
   const viteConfigSource = readFileSync(new URL('../vite.config.ts', import.meta.url), 'utf8');
-  const vercelCatchAll = await import('../api/[...path].ts');
-  const vercelApiRoot = await import('../api/index.ts');
+  const vercelCatchAllSource = readFileSync(new URL('../api/[...path].ts', import.meta.url), 'utf8');
+  const vercelApiRootSource = readFileSync(new URL('../api/index.ts', import.meta.url), 'utf8');
+  assert(
+    vercelCatchAllSource.includes("import app from '../server.ts';") &&
+      vercelApiRootSource.includes("import app from '../server.ts';") &&
+      !vercelCatchAllSource.includes('../dist/server.js') &&
+      !vercelApiRootSource.includes('../dist/server.js'),
+    'Vercel API functions import the TypeScript server source that Vercel bundles with each function'
+  );
+  assert(
+    serverSource.includes('export const app = express();') && serverSource.includes('export default app;'),
+    'The shared Express application is exported for the Vercel API functions'
+  );
   assert(vercelConfig.buildCommand === 'npm run build' && vercelConfig.outputDirectory === 'dist/client' && viteConfigSource.includes("outDir: 'dist/client'"), 'Vercel publishes the Vite build output directory');
   assert(vercelConfig.rewrites.some(rule => rule.destination === '/index.html' && rule.source.includes('(?!api')) && vercelConfig.rewrites.some(rule => rule.source === '/'), 'SPA fallback serves the root and excludes API paths');
-  assert(vercelCatchAll.default === app && vercelApiRoot.default === app && readFileSync(new URL('../server.ts', import.meta.url), 'utf8').includes('export default app'), 'Vercel API functions export the shared Express app');
   const vendorDashboardRouteLayer = (app as any)._router.stack.find((layer: any) =>
     layer.route?.path === '/api/vendor/dashboard' && layer.route.methods.get
   );
@@ -585,8 +595,15 @@ async function runTests() {
   }
   assert(adminRouteCalled, 'Admin list route test completed');
   const navbarSource = readFileSync(new URL('../src/components/Navbar.tsx', import.meta.url), 'utf8');
+  const footerSource = readFileSync(new URL('../src/components/Footer.tsx', import.meta.url), 'utf8');
+  const homeSource = readFileSync(new URL('../src/pages/HomePage.tsx', import.meta.url), 'utf8');
+  const customerRegistrationSource = readFileSync(new URL('../src/pages/CustomerRegistrationPage.tsx', import.meta.url), 'utf8');
+  const vendorRegistrationSource = readFileSync(new URL('../src/pages/VendorRegistrationPage.tsx', import.meta.url), 'utf8');
   const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
   assert(navbarSource.includes('isVerifiedMember(user.id, adminUserId)') && navbarSource.includes('isVerifiedMember(user.id, vendorUserId)'), 'Navigation links depend on server-verified membership for the current user');
+  assert((navbarSource.match(/to="\/vendor-register"/g)?.length || 0) >= 2 && (navbarSource.match(/to="\/customer-register"/g)?.length || 0) >= 2 && footerSource.includes('/customer-register') && footerSource.includes('/vendor-register'), 'Separate customer and vendor onboarding links remain in desktop/mobile navigation and the shared footer');
+  assert(homeSource.includes('Customer ordering is not available yet') && homeSource.includes('to="/explore"') && !homeSource.includes('popularItems') && vendorRegistrationSource.includes('Approval is required before your storefront can accept orders.'), 'Concise public pages preserve truthful ordering status and vendor approval expectations');
+  assert(customerRegistrationSource.includes('htmlFor="customer-name"') && customerRegistrationSource.includes('role="alert"') && vendorRegistrationSource.includes('htmlFor="vendor-biz-name"') && vendorRegistrationSource.includes('role="alert"') && vendorRegistrationSource.includes('Sign in to submit application'), 'Customer and vendor forms retain labelled fields, announced errors, and authenticated vendor submission');
   assert(appSource.includes('<AdminRoute />') && appSource.includes('getAdminAccessViewState({ permissionsLoading, userId: user?.id, adminUserId'), 'Direct /admin navigation checks verified membership before mounting admin content');
   assert(appSource.includes('adminPermissionError') && appSource.includes('retryPermissionCheck'), 'Admin permission API failures are visible and can be retried instead of being shown as a false denial');
   const menuCreateLayer = (app as any)._router.stack.find((layer: any) => layer.route?.path === '/api/vendor/businesses/:businessId/menu' && layer.route.methods.post);
@@ -680,6 +697,14 @@ async function runTests() {
       !browserSupabaseSource.includes('SUPABASE_SERVICE_ROLE_KEY'),
     'Browser Supabase client uses only the publishable key setting'
   );
+
+  const revealSource = readFileSync(new URL('../src/components/ScrollReveal.tsx', import.meta.url), 'utf8');
+  const revealStyles = readFileSync(new URL('../src/index.css', import.meta.url), 'utf8');
+  const exploreSource = readFileSync(new URL('../src/pages/ExplorePage.tsx', import.meta.url), 'utf8');
+  assert(revealSource.includes('new IntersectionObserver') && revealSource.includes('sharedObserver') && revealSource.includes("unobserve(target)"), 'Food-card reveal shares an observer and stops observing after the first reveal');
+  assert(revealSource.includes('prefers-reduced-motion: reduce') && revealSource.includes("'IntersectionObserver' in window"), 'Food-card reveal respects reduced motion and keeps a no-observer fallback visible');
+  assert(revealStyles.includes('380ms') && revealStyles.includes('prefers-reduced-motion: reduce') && revealStyles.includes('(hover: hover) and (pointer: fine)'), 'Food-card motion is brief, reduced-motion aware, and hover-only on capable devices');
+  assert(exploreSource.includes('<ScrollReveal') && homeSource.includes('<ScrollReveal') && storefrontSource.includes('<ScrollReveal'), 'Homepage food imagery, Explore vendor cards, and public menu items use the shared reveal');
 
   const originalFetch = globalThis.fetch;
   try {

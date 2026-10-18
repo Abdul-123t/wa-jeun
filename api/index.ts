@@ -1,5 +1,6 @@
-// Vercel Function for the /api base path. All API behavior remains in the
-// shared Express app, including authentication and the JSON 404 handler.
-import app from '../server';
+// Vercel Function for the /api base path. Vercel compiles and bundles the
+// imported TypeScript source with this function instead of relying on a
+// separately generated dist/server.js artifact.
+import app from '../server.ts';
 
 export default app;
