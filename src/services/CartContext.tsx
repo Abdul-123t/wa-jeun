@@ -3,7 +3,7 @@ import type { PublicMenuItem, PublicVendorBusiness } from './api';
 
 export type CartLine = { menuItemId: string; name: string; description: string; category: string; priceNgn: number; imageUrl: string | null; quantity: number };
 export type CartState = { vendorId: string; vendorName: string; lines: CartLine[] };
-type CartContextValue = { cart: CartState | null; addItem: (vendor: PublicVendorBusiness, item: PublicMenuItem) => 'added' | 'different_vendor'; setQuantity: (menuItemId: string, quantity: number) => void; removeItem: (menuItemId: string) => void; syncLine: (item: PublicMenuItem) => void; clearCart: () => void };
+type CartContextValue = { cart: CartState | null; addItem: (vendor: PublicVendorBusiness, item: PublicMenuItem) => 'added' | 'different_vendor'; replaceCartWithItem: (vendor: PublicVendorBusiness, item: PublicMenuItem) => void; setQuantity: (menuItemId: string, quantity: number) => void; removeItem: (menuItemId: string) => void; syncLine: (item: PublicMenuItem) => void; clearCart: () => void };
 const CartContext = createContext<CartContextValue | null>(null);
 const STORAGE_KEY = 'wa-jeun-cart-v1';
 
@@ -27,6 +27,11 @@ export const CartProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       });
       return 'added';
     },
+    replaceCartWithItem: (vendor, item) => setCart({
+      vendorId: vendor.id,
+      vendorName: vendor.business_name,
+      lines: [{ menuItemId: item.id, name: item.name, description: item.description, category: item.category, priceNgn: Number(item.price_ngn), imageUrl: item.image_url, quantity: 1 }]
+    }),
     setQuantity: (menuItemId, quantity) => setCart(current => !current ? current : ({ ...current, lines: current.lines.map(line => line.menuItemId === menuItemId ? { ...line, quantity: Math.max(1, Math.min(99, Math.floor(quantity))) } : line) })),
     removeItem: menuItemId => setCart(current => { if (!current) return current; const lines = current.lines.filter(line => line.menuItemId !== menuItemId); return lines.length ? { ...current, lines } : null; }),
     syncLine: item => setCart(current => current ? ({ ...current, lines: current.lines.map(line => line.menuItemId === item.id ? { ...line, name: item.name, description: item.description, category: item.category, priceNgn: Number(item.price_ngn), imageUrl: item.image_url } : line) }) : current),

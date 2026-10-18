@@ -35,22 +35,27 @@ import {
   deleteVendorMenuItem,
   uploadVendorMenuImage,
   createCustomerOrder,
+  getCustomerOrderAttempt,
   getCustomerOrders,
   getVendorOrders,
   transitionVendorOrder
 } from './src/server/db';
 import { authorizeAdminHeader, parseBearerAuthorization } from './src/server/authTokens';
 import { FULFILLMENT_OPTIONS, MENU_CATEGORIES, isTrustedMenuImageUrl, validateMenuItem, validateOpeningHours } from './src/server/vendorRules';
-import { parseCheckoutLines, validateCheckoutContact, validateFulfillment } from './src/server/orderRules';
+import { createOrderRequestFingerprint, parseCheckoutLines, validateCheckoutContact, validateFulfillment } from './src/server/orderRules';
+import { isProductionRuntime } from './src/server/runtimeMode';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export const app = express();
+// Vercel's Node runtime imports the existing Express app as a function. The
+// guarded listener below remains available for local and conventional hosts.
+export default app;
 configureClientIpTrust(app, process.env);
 const PORT = Number(process.env.PORT) || 3000;
-const isProduction = process.env.NODE_ENV === 'production';
-const isDevelopment = process.env.NODE_ENV === 'development';
+const isProduction = isProductionRuntime();
+const isDevelopment = process.env.NODE_ENV === 'development' && !isProduction;
 
 function asyncRoute(handler: (req: Request, res: Response) => Promise<unknown>): RequestHandler {
   return (req, res, next) => { void handler(req, res).catch(next); };
@@ -182,13 +187,17 @@ app.get('/api/vendor/dashboard', asyncRoute(async (req: Request, res: Response) 
 app.patch('/api/vendor/businesses/:businessId/profile', asyncRoute(async (req: Request, res: Response) => {
   const authorization = await verifiedVendorUser(req);
   if (!authorization.userId) return res.status(authorization.statusCode || 401).json({ success: false, error: authorization.error });
-  const { description, neighborhood, openingHours, fulfillmentOptions, deliveryFeeNgn } = req.body || {};
+  const { businessName, businessType, contactName, phone, email, description, neighborhood, openingHours, fulfillmentOptions, deliveryFeeNgn } = req.body || {};
+  const cleanBusinessName = sanitizeText(businessName, 200);
+  const cleanContactName = sanitizeText(contactName, 150);
+  const normalizedPhone = normalizeNigerianPhone(phone);
+  const normalizedEmail = email ? normalizeEmail(email) : null;
   const cleanDescription = sanitizeText(description, 1000);
   const cleanNeighborhood = sanitizeText(neighborhood, 150);
-  if (cleanDescription.length < 20 || !cleanNeighborhood || !validateOpeningHours(openingHours) || !FULFILLMENT_OPTIONS.includes(fulfillmentOptions) || (deliveryFeeNgn !== null && deliveryFeeNgn !== undefined && (typeof deliveryFeeNgn !== 'number' || !Number.isFinite(deliveryFeeNgn) || deliveryFeeNgn < 0 || deliveryFeeNgn > 10000000 || Math.round(deliveryFeeNgn * 100) !== deliveryFeeNgn * 100))) {
-    return res.status(400).json({ success: false, error: 'Add a description, neighborhood, valid hours and fulfillment option, plus a valid optional delivery fee.' });
+  if (cleanBusinessName.length < 2 || !VALID_BUSINESS_TYPES.includes(businessType) || cleanContactName.length < 2 || !normalizedPhone || (email && !normalizedEmail) || cleanDescription.length < 20 || !cleanNeighborhood || !validateOpeningHours(openingHours) || !FULFILLMENT_OPTIONS.includes(fulfillmentOptions) || (deliveryFeeNgn !== null && deliveryFeeNgn !== undefined && (typeof deliveryFeeNgn !== 'number' || !Number.isFinite(deliveryFeeNgn) || deliveryFeeNgn < 0 || deliveryFeeNgn > 10000000 || Math.round(deliveryFeeNgn * 100) !== deliveryFeeNgn * 100))) {
+    return res.status(400).json({ success: false, error: 'Check the business name, category, contact details, description, neighborhood, hours, fulfillment option and delivery fee.' });
   }
-  const result = await updateVendorProfile(authorization.userId, req.params.businessId, { description: cleanDescription, neighborhood: cleanNeighborhood, openingHours, fulfillmentOptions, deliveryFeeNgn: deliveryFeeNgn ?? null });
+  const result = await updateVendorProfile(authorization.userId, req.params.businessId, { businessName: cleanBusinessName, businessType, contactName: cleanContactName, phone: normalizedPhone, email: normalizedEmail, description: cleanDescription, neighborhood: cleanNeighborhood, openingHours, fulfillmentOptions, deliveryFeeNgn: deliveryFeeNgn ?? null });
   if (!result.success) return res.status(result.statusCode || 503).json({ success: false, error: result.error });
   return res.json({ success: true, business: result.data });
 }));
@@ -198,8 +207,22 @@ app.get('/api/customer/orders', asyncRoute(async (req: Request, res: Response) =
   const authorization = await verifiedCustomerUser(req);
   if (!authorization.userId) return res.status(authorization.statusCode || 401).json({ success: false, error: authorization.error });
   const result = await getCustomerOrders(authorization.userId);
-  if (!result.success) return res.status(result.statusCode || 503).json({ success: false, error: result.error });
+  if (!result.success) {
+    console.error('[WA JEUN API] GET /api/customer/orders failed.', { status: result.statusCode || 503, category: 'order_history_query_failed' });
+    return res.status(result.statusCode || 503).json({ success: false, error: result.error });
+  }
   return res.json({ success: true, orders: result.data });
+}));
+
+app.get('/api/customer/orders/attempt/:key', asyncRoute(async (req: Request, res: Response) => {
+  res.set('Cache-Control', 'no-store');
+  const authorization = await verifiedCustomerUser(req);
+  if (!authorization.userId) return res.status(authorization.statusCode || 401).json({ success: false, error: authorization.error });
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(req.params.key)) return res.status(400).json({ success: false, error: 'Checkout attempt is invalid.' });
+  const result = await getCustomerOrderAttempt(authorization.userId, req.params.key);
+  if (!result.success) return res.status(result.statusCode || 503).json({ success: false, error: result.error });
+  if (!result.data) return res.status(404).json({ success: false, error: 'No saved order was found for this attempt.' });
+  return res.json({ success: true, order: result.data });
 }));
 
 app.post('/api/customer/orders', customerOrderLimiter, asyncRoute(async (req: Request, res: Response) => {
@@ -211,12 +234,18 @@ app.post('/api/customer/orders', customerOrderLimiter, asyncRoute(async (req: Re
   if (!lines.success) return res.status(400).json({ success: false, error: lines.error });
   const contact = validateCheckoutContact(req.body?.customerName, req.body?.customerPhone);
   if (!contact.success) return res.status(400).json({ success: false, error: contact.error });
-  const fulfillment = validateFulfillment(req.body?.fulfillmentMethod, req.body?.deliveryAddress, ['pickup_only', 'vendor_delivery', 'pickup_and_delivery', 'delivery_varies']);
+  const fulfillment = validateFulfillment(req.body?.fulfillmentMethod, req.body?.deliveryAddress, ['pickup_only', 'vendor_delivery', 'pickup_and_delivery']);
   if (!fulfillment.success) return res.status(400).json({ success: false, error: fulfillment.error });
   if (typeof req.body?.idempotencyKey !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(req.body.idempotencyKey)) return res.status(400).json({ success: false, error: 'Refresh checkout and try again.' });
+  if (typeof req.body?.expectedDeliveryFeeNgn !== 'number' && req.body?.expectedDeliveryFeeNgn !== null) return res.status(400).json({ success: false, error: 'Refresh checkout and review the delivery fee.' });
+  const expectedFee = fulfillment.fulfillmentMethod === 'pickup' ? null : req.body.expectedDeliveryFeeNgn;
+  if (expectedFee !== null && (!Number.isFinite(expectedFee) || expectedFee < 0 || expectedFee > 10000000 || Math.round(expectedFee * 100) !== expectedFee * 100)) return res.status(400).json({ success: false, error: 'Refresh checkout and review the delivery fee.' });
+  if (fulfillment.fulfillmentMethod === 'vendor_delivery' && expectedFee === null) return res.status(400).json({ success: false, error: 'This business has not configured a delivery fee. Choose pickup or contact the business.' });
+  const fingerprint = createOrderRequestFingerprint({ customerUserId: authorization.userId, customerName: contact.customerName, customerPhone: contact.customerPhone,
+    fulfillmentMethod: fulfillment.fulfillmentMethod as 'pickup' | 'vendor_delivery', deliveryAddress: fulfillment.deliveryAddress, expectedDeliveryFeeNgn: expectedFee, lines: lines.lines as Array<{ menuItemId: string; quantity: number; expectedPriceNgn: number }> });
   const result = await createCustomerOrder({ customerUserId: authorization.userId, customerName: contact.customerName, customerPhone: contact.customerPhone,
     fulfillmentMethod: fulfillment.fulfillmentMethod as 'pickup' | 'vendor_delivery', deliveryAddress: fulfillment.deliveryAddress, lines: lines.lines,
-    idempotencyKey: req.body.idempotencyKey, isTestOrder: true });
+    idempotencyKey: req.body.idempotencyKey, requestFingerprint: fingerprint, expectedDeliveryFeeNgn: expectedFee, isTestOrder: true });
   if (!result.success) return res.status(result.statusCode || 503).json({ success: false, error: result.error });
   return res.status(result.data.created ? 201 : 200).json({ success: true, order: result.data });
 }));
@@ -359,7 +388,10 @@ app.get('/api/vendors', async (req: Request, res: Response) => {
       neighborhood: filterNeighborhood,
       fulfillment: filterFulfillment
     });
-    if (!result.success) return res.status(result.statusCode).json({ success: false, error: result.error });
+    if (!result.success) {
+      console.error('[WA JEUN API] GET /api/vendors failed.', { status: result.statusCode || 503, category: 'directory_query_failed' });
+      return res.status(result.statusCode).json({ success: false, error: result.error });
+    }
 
     res.json({
       success: true,
@@ -377,6 +409,7 @@ app.get('/api/vendors', async (req: Request, res: Response) => {
         : 'Displaying verified food businesses in Ijebu Ode.'
     });
   } catch {
+    console.error('[WA JEUN API] GET /api/vendors failed.', { status: 503, category: 'unexpected_route_error' });
     res.status(503).json({ success: false, error: 'The food directory is temporarily unavailable. Please try again.' });
   }
 });
@@ -611,17 +644,12 @@ app.post('/api/interest/vendor', vendorApplicationLimiter, async (req: Request, 
     const cleanMessage = sanitizeText(message, 1000);
 
     const authorization = parseBearerAuthorization(req.get('authorization'));
-    if (authorization.provided && !authorization.token) {
-      return res.status(401).json({ success: false, error: 'Your session is invalid or expired.' });
+    if (!authorization.token) return res.status(401).json({ success: false, error: 'Sign in before submitting a vendor application.' });
+    const verified = await verifySupabaseAccessToken(authorization.token);
+    if (!verified.success || !verified.data) {
+      return res.status(verified.statusCode || 401).json({ success: false, error: verified.error || 'Your session is invalid or expired.' });
     }
-    let ownerUserId: string | null = null;
-    if (authorization.token) {
-      const verified = await verifySupabaseAccessToken(authorization.token);
-      if (!verified.success || !verified.data) {
-        return res.status(verified.statusCode || 401).json({ success: false, error: verified.error });
-      }
-      ownerUserId = verified.data.userId;
-    }
+    const ownerUserId = verified.data.userId;
 
     // Persistent Database Insertion
     const dbResult = await insertVendorInterest({

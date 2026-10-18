@@ -6,34 +6,47 @@ import {
   SystemHealthResponse
 } from '../types';
 
+export class ApiError extends Error {
+  constructor(message: string, public readonly status: number, public readonly category: string) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+function logApiFailure(endpoint: string, error: unknown): void {
+  const status = error instanceof ApiError ? error.status : 0;
+  const category = error instanceof ApiError ? error.category : error instanceof TypeError ? 'network_error' : 'unexpected_response';
+  console.warn('[WA JEUN API] Request failed.', { endpoint, status, category });
+}
+
 async function readAdminJson<T>(res: Response, fallback: string): Promise<T> {
   const contentType = res.headers.get('content-type') || '';
   if (!contentType.toLocaleLowerCase().includes('json')) {
-    throw new Error(`Admin API returned a non-JSON response (HTTP ${res.status}). Check the backend URL or Vite API proxy.`);
+    throw new ApiError(res.status === 401 ? 'Your session expired. Sign in again, then retry.' : 'The service response could not be read. Please retry.', res.status, 'non_json_response');
   }
   let data: unknown;
   try {
     data = await res.json();
   } catch {
-    throw new Error(`Admin API returned invalid JSON (HTTP ${res.status}).`);
+    throw new ApiError('The service response could not be read. Please retry.', res.status, 'invalid_json');
   }
   const response = data as { error?: unknown } | null;
   if (!res.ok) {
-    throw new Error(typeof response?.error === 'string' ? response.error : fallback);
+    throw new ApiError(typeof response?.error === 'string' ? response.error : fallback, res.status, res.status === 401 ? 'unauthorized' : res.status === 503 ? 'service_unavailable' : 'http_error');
   }
-  if (!response || typeof response !== 'object') throw new Error('Admin API returned an unexpected response.');
+  if (!response || typeof response !== 'object') throw new ApiError('The service response could not be read. Please retry.', res.status, 'unexpected_response');
   return data as T;
 }
 
 async function readPublicJson<T>(res: Response, fallback: string): Promise<T> {
   const contentType = res.headers.get('content-type') || '';
-  if (!contentType.toLocaleLowerCase().includes('json')) throw new Error(`Food directory returned a non-JSON response (HTTP ${res.status}).`);
+  if (!contentType.toLocaleLowerCase().includes('json')) throw new ApiError(`Food directory returned a non-JSON response (HTTP ${res.status}).`, res.status, 'non_json_response');
   let data: unknown;
   try { data = await res.json(); }
-  catch { throw new Error(`Food directory returned invalid JSON (HTTP ${res.status}).`); }
+  catch { throw new ApiError(`Food directory returned invalid JSON (HTTP ${res.status}).`, res.status, 'invalid_json'); }
   const response = data as { error?: unknown } | null;
-  if (!res.ok) throw new Error(typeof response?.error === 'string' ? response.error : fallback);
-  if (!response || typeof response !== 'object') throw new Error('Food directory returned an unexpected response.');
+  if (!res.ok) throw new ApiError(typeof response?.error === 'string' ? response.error : fallback, res.status, res.status === 401 ? 'unauthorized' : res.status === 503 ? 'service_unavailable' : 'http_error');
+  if (!response || typeof response !== 'object') throw new ApiError('Food directory returned an unexpected response.', res.status, 'unexpected_response');
   return data as T;
 }
 
@@ -70,12 +83,17 @@ export const api = {
     if (params?.neighborhood) query.append('neighborhood', params.neighborhood);
     if (params?.fulfillment) query.append('fulfillment', params.fulfillment);
 
-    const res = await fetch(`/api/vendors${query.size ? `?${query.toString()}` : ''}`, { cache: 'no-store' });
-    const response = await readPublicJson<PublicVendorListResponse>(res, 'Could not load food businesses.');
-    if (response.success !== true || !Array.isArray(response.vendors) || !Number.isFinite(response.total)) {
-      throw new Error('Food directory returned an unexpected response.');
+    try {
+      const res = await fetch(`/api/vendors${query.size ? `?${query.toString()}` : ''}`, { cache: 'no-store' });
+      const response = await readPublicJson<PublicVendorListResponse>(res, 'Could not load food businesses.');
+      if (response.success !== true || !Array.isArray(response.vendors) || !Number.isFinite(response.total)) {
+        throw new ApiError('Food directory returned an unexpected response.', 200, 'unexpected_response');
+      }
+      return response;
+    } catch (error) {
+      logApiFailure('GET /api/vendors', error);
+      throw error;
     }
-    return response;
   },
 
   async getPublicVendorMenu(businessId: string) {
@@ -213,15 +231,25 @@ export const api = {
 
   async createCustomerOrder(accessToken: string, payload: {
     customerName: string; customerPhone: string; fulfillmentMethod: 'pickup' | 'vendor_delivery'; deliveryAddress: string | null;
-    items: Array<{ menuItemId: string; quantity: number }>; idempotencyKey: string;
+    items: Array<{ menuItemId: string; quantity: number; expectedPriceNgn: number }>; expectedDeliveryFeeNgn: number | null; idempotencyKey: string;
   }) {
     const res = await fetch('/api/customer/orders', { method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     return await readAdminJson<{ success: true; order: { id: string; orderReference: string; totalNgn: number; isTestOrder: boolean; created: boolean } }>(res, 'Could not place the order.');
   },
 
+  async getCustomerOrderAttempt(accessToken: string, idempotencyKey: string) {
+    const res = await fetch(`/api/customer/orders/attempt/${encodeURIComponent(idempotencyKey)}`, { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' });
+    return await readAdminJson<{ success: true; order: { id: string; orderReference: string; totalNgn: number; isTestOrder: boolean; created: boolean } }>(res, 'Could not confirm the previous checkout attempt.');
+  },
+
   async getCustomerOrders(accessToken: string) {
-    const res = await fetch('/api/customer/orders', { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' });
-    return await readAdminJson<{ success: true; orders: CustomerOrder[] }>(res, 'Could not load your orders.');
+    try {
+      const res = await fetch('/api/customer/orders', { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' });
+      return await readAdminJson<{ success: true; orders: CustomerOrder[] }>(res, 'Could not load your orders.');
+    } catch (error) {
+      logApiFailure('GET /api/customer/orders', error);
+      throw error;
+    }
   },
 
   async getVendorOrders(accessToken: string, businessId?: string) {
@@ -322,11 +350,11 @@ export const api = {
 };
 
 export type VendorMenuItem = { id: string; name: string; description: string; price_ngn: number; category: string; image_url: string | null; available: boolean; created_at: string; updated_at: string };
-export type VendorBusiness = { id: string; business_name: string; neighborhood: string; business_type: string; fulfillment_options: string; delivery_fee_ngn: number | null; status: string; description: string | null; opening_hours: Record<string, { open: string; close: string; closed: boolean }> | null; accepting_orders: boolean; review_reason?: string | null; menu: VendorMenuItem[] };
+export type VendorBusiness = { id: string; business_name: string; contact_name: string; phone: string; email: string | null; neighborhood: string; business_type: string; fulfillment_options: string; delivery_fee_ngn: number | null; status: string; description: string | null; opening_hours: Record<string, { open: string; close: string; closed: boolean }> | null; accepting_orders: boolean; review_reason?: string | null; menu: VendorMenuItem[] };
 export type PublicMenuItem = Pick<VendorMenuItem, 'id' | 'name' | 'description' | 'price_ngn' | 'category' | 'image_url'> & { available: true };
 export type PublicVendorBusiness = Pick<VendorBusiness, 'id' | 'business_name' | 'neighborhood' | 'business_type' | 'fulfillment_options' | 'delivery_fee_ngn' | 'accepting_orders'> & { description: string; opening_hours: NonNullable<VendorBusiness['opening_hours']>; menu: PublicMenuItem[] };
 export type PublicVendorListResponse = { success: true; vendors: PublicVendorBusiness[]; total: number; status: 'empty' | 'available'; message: string };
-export type VendorProfileInput = { description: string; neighborhood: string; openingHours: Record<string, { open: string; close: string; closed: boolean }>; fulfillmentOptions: string; deliveryFeeNgn: number | null };
+export type VendorProfileInput = { businessName: string; businessType: string; contactName: string; phone: string; email: string | null; description: string; neighborhood: string; openingHours: Record<string, { open: string; close: string; closed: boolean }>; fulfillmentOptions: string; deliveryFeeNgn: number | null };
 export type VendorMenuInput = { name: string; description: string; priceNgn: number; category: string; imageUrl: string | null; available: boolean };
 export type CustomerOrderItem = { id: string; menu_item_id: string | null; item_name: string; quantity: number; unit_price_ngn: number; line_total_ngn: number };
 export type CustomerOrder = { id: string; order_reference: string; vendor_interest_id: string; customer_name: string; customer_phone: string; fulfillment_method: 'pickup' | 'vendor_delivery'; delivery_address: string | null; subtotal_ngn: number; delivery_fee_ngn: number | null; total_ngn: number; status: string; payment_status: string; is_test_order: boolean; created_at: string; updated_at: string; accepted_at: string | null; rejected_at: string | null; preparing_at: string | null; ready_at: string | null; out_for_delivery_at: string | null; completed_at: string | null; vendor?: { business_name: string; neighborhood: string }; items: CustomerOrderItem[] };

@@ -127,7 +127,7 @@ export const Navbar: React.FC = () => {
           return <Link key={item.to} to={item.to} aria-current={active ? 'page' : undefined} className="rounded-md px-2.5 py-2 text-[13px] font-semibold text-[#123B2A] transition-colors hover:bg-[#123B2A]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]">{item.label}</Link>;
         })}
         {user && <button type="button" onClick={() => void handleSignOut()} className="rounded-md px-2 py-2 text-[13px] font-semibold text-[#20231F]/65 transition-colors hover:text-[#123B2A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]">Sign out</button>}
-        <Link to="/vendor-register" className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[#123B2A]/20 px-3 text-[13px] font-bold text-[#123B2A] transition-colors hover:border-[#123B2A]/50 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]">For food businesses</Link>
+        <Link to="/vendor-register" className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[#123B2A]/20 px-3 text-[13px] font-bold text-[#123B2A] transition-colors hover:border-[#123B2A]/50 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]">Become a Vendor</Link>
         <Link to="/customer-register" className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-[#B8D94B] px-3.5 text-[13px] font-bold text-[#123B2A] shadow-sm transition-colors hover:bg-[#a9cc38] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A] focus-visible:ring-offset-2">Join launch list <ArrowRight size={15}/></Link>
       </div>
 
@@ -147,7 +147,7 @@ export const Navbar: React.FC = () => {
         {!loading && accountLinks.map(item => renderLink(item, true))}
         {user && <button type="button" onClick={() => void handleSignOut()} className="flex min-h-12 w-full items-center border-b border-[#123B2A]/10 px-1 text-left text-[15px] font-semibold text-[#20231F] hover:text-[#123B2A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]">Sign out</button>}
         <div className="grid gap-2.5 pt-5">
-          <Link to="/vendor-register" onClick={closeMenu} className="flex min-h-12 items-center justify-center gap-2 rounded-lg border border-[#123B2A]/20 bg-white px-4 text-sm font-bold text-[#123B2A] transition-colors hover:border-[#123B2A]/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]"><Store size={17}/>Register a food business</Link>
+          <Link to="/vendor-register" onClick={closeMenu} className="flex min-h-12 items-center justify-center gap-2 rounded-lg border border-[#123B2A]/20 bg-white px-4 text-sm font-bold text-[#123B2A] transition-colors hover:border-[#123B2A]/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]"><Store size={17}/>Become a Vendor</Link>
           <Link to="/customer-register" onClick={closeMenu} className="flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[#B8D94B] px-4 text-sm font-bold text-[#123B2A] shadow-sm transition-colors hover:bg-[#a9cc38] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]">Join the launch list <ArrowRight size={16}/></Link>
         </div>
       </nav>

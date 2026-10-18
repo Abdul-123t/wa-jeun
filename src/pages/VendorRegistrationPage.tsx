@@ -92,6 +92,10 @@ export const VendorRegistrationPage: React.FC = () => {
     if (!validate()) {
       return;
     }
+    if (!session?.access_token) {
+      setApiError('Sign in or create an account before submitting. Your application must be linked to your verified account.');
+      return;
+    }
 
     setIsSubmitting(true);
     const finalNeighborhood = neighborhood === 'Other Neighborhood in Ijebu Ode' 
@@ -110,7 +114,7 @@ export const VendorRegistrationPage: React.FC = () => {
         fulfillmentOptions,
         message: message.trim() || undefined,
         consentAccepted
-      }, session?.access_token);
+      }, session.access_token);
 
       if (res.success) {
         setSuccessData({
@@ -196,7 +200,7 @@ export const VendorRegistrationPage: React.FC = () => {
         <div className="text-center space-y-3">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#123B2A]/5 text-[#123B2A] text-xs font-semibold">
             <Store className="w-3.5 h-3.5 text-[#123B2A]" />
-            <span>Food Business Onboarding · Ijebu Ode</span>
+            <span>Built in Ijebu. Made for Ijebu.</span>
           </div>
 
           <h1 className="font-display text-3xl sm:text-4xl font-extrabold text-[#123B2A] tracking-tight">
@@ -204,7 +208,7 @@ export const VendorRegistrationPage: React.FC = () => {
           </h1>
 
           <p className="text-sm sm:text-base text-[#20231F]/80 max-w-xl mx-auto leading-relaxed">
-            We're preparing our first group of food businesses for Ijebu Ode. Register your interest so we can learn about your business and contact you about onboarding.
+            Wá jẹun starts in Ijebu Ode, connecting local residents with the independent food businesses that make the city special. We're preparing our first group here, with room to grow across Ogun State and beyond. Apply to create your business profile; our team reviews every application before a storefront can accept orders.
           </p>
           {authLoading ? (
             <p role="status" className="mx-auto max-w-xl text-sm text-[#20231F]/60">Restoring your account session…</p>
@@ -212,7 +216,7 @@ export const VendorRegistrationPage: React.FC = () => {
             <p className="mx-auto max-w-xl rounded-xl border border-[#123B2A]/10 bg-white px-4 py-3 text-sm text-[#123B2A]">You’re signed in. This application will be linked to your account so you can check its status.</p>
           ) : (
             <p className="mx-auto max-w-xl text-sm text-[#20231F]/65">
-              You can apply without an account. <Link to="/auth?mode=signin" className="font-semibold text-[#123B2A] underline underline-offset-2">Sign in</Link> or <Link to="/auth?mode=signup" className="font-semibold text-[#123B2A] underline underline-offset-2">create an account</Link> before submitting to link your application.
+              Sign in or <Link to="/auth?mode=signup" className="font-semibold text-[#123B2A] underline underline-offset-2">create an account</Link> to apply. Applications are linked to the signed-in account for secure status tracking and business management. <Link to="/auth?mode=signin" className="font-semibold text-[#123B2A] underline underline-offset-2">Sign in</Link>
             </p>
           )}
         </div>
@@ -524,7 +528,7 @@ export const VendorRegistrationPage: React.FC = () => {
             <div className="pt-4">
               <button
                 type="submit"
-                disabled={isSubmitting || authLoading}
+                disabled={isSubmitting || authLoading || !session?.access_token}
                 className="w-full min-h-[48px] px-6 py-3.5 text-base font-bold text-[#123B2A] bg-[#B8D94B] hover:bg-[#a7c93e] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
               >
                 {isSubmitting ? (
@@ -534,7 +538,7 @@ export const VendorRegistrationPage: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <span>{authLoading ? 'Restoring account…' : 'Submit Business Expression of Interest'}</span>
+                    <span>{authLoading ? 'Restoring account…' : !session?.access_token ? 'Sign in to submit application' : 'Submit vendor application'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -566,7 +570,7 @@ export const VendorRegistrationPage: React.FC = () => {
               </span>
               <h4 className="text-sm font-bold text-[#123B2A]">Review & Verification</h4>
               <p className="text-xs text-[#20231F]/70 leading-relaxed">
-                Our local Ijebu Ode team reviews your business location and specialty dishes within 48 hours.
+                Our onboarding team reviews your application and will contact you about next steps.
               </p>
             </div>
 

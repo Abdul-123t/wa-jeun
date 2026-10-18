@@ -8,6 +8,7 @@ import { randomUUID } from 'crypto';
 import { isVendorSellEligible, isVendorOwner, canManageMenu, isTrustedMenuImageUrl, type OpeningHours } from './vendorRules';
 import { resolveAvailableOrderItems, type CheckoutLine, type FulfillmentMethod } from './orderRules';
 import { getPublicStoreAvailability } from '../services/storeHours';
+import { isProductionRuntime } from './runtimeMode';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,7 +47,7 @@ if (supabaseUrl && supabaseSecretKey) {
     console.error('[WA JEUN DB] Failed to initialize Supabase client. Check server-side Supabase configuration.');
   }
 } else {
-  if (process.env.NODE_ENV === 'production') {
+  if (isProductionRuntime()) {
     console.warn(
       '[WA JEUN DB WARNING] Production environment detected without SUPABASE_URL and SUPABASE_SECRET_KEY. Submissions will be rejected with 503 until persistent credentials are provided.'
     );
@@ -76,7 +77,7 @@ export async function verifySupabaseAccessToken(accessToken: string): Promise<Db
 
 export function getStorageMode(): 'supabase-production' | 'dev-local-json' | 'unconfigured-production' {
   if (supabaseClient) return 'supabase-production';
-  if (process.env.NODE_ENV === 'production') return 'unconfigured-production';
+  if (isProductionRuntime()) return 'unconfigured-production';
   return 'dev-local-json';
 }
 
@@ -638,13 +639,17 @@ export async function reviewVendorApplication(
 }
 
 export function toPublicVendor(record: Record<string, any>): Pick<PublicVendor, 'id' | 'business_name' | 'neighborhood' | 'business_type' | 'fulfillment_options' | 'delivery_fee_ngn'> {
+  const deliveryFee = record.delivery_fee_ngn === undefined || record.delivery_fee_ngn === null ? null : Number(record.delivery_fee_ngn);
+  const hasDeliveryFee = deliveryFee !== null && Number.isFinite(deliveryFee) && deliveryFee >= 0;
+  const configuredOptions = record.fulfillment_options;
+  const fulfillmentOptions = configuredOptions === 'pickup_and_delivery' && !hasDeliveryFee ? 'pickup_only' : configuredOptions;
   return {
     id: record.id,
     business_name: record.business_name,
     neighborhood: record.neighborhood,
     business_type: record.business_type,
-    fulfillment_options: record.fulfillment_options,
-    delivery_fee_ngn: record.delivery_fee_ngn === undefined || record.delivery_fee_ngn === null ? null : Number(record.delivery_fee_ngn)
+    fulfillment_options: fulfillmentOptions,
+    delivery_fee_ngn: hasDeliveryFee ? deliveryFee : null
   };
 }
 
@@ -676,7 +681,6 @@ function orderItemsByOrder(items: any[] = []): Map<string, OrderItemSnapshot[]> 
 
 const ORDER_SELECT = 'id, order_reference, vendor_interest_id, customer_name, customer_phone, fulfillment_method, delivery_address, subtotal_ngn, delivery_fee_ngn, total_ngn, status, payment_status, is_test_order, created_at, updated_at, accepted_at, rejected_at, preparing_at, ready_at, out_for_delivery_at, completed_at';
 const ORDER_ITEM_SELECT = 'id, order_id, menu_item_id, item_name, quantity, unit_price_ngn, line_total_ngn';
-
 function attachOrderData(orders: any[], orderItems: any[], businesses: any[] = []): CustomerOrderRecord[] {
   const itemGroups = orderItemsByOrder(orderItems);
   const businessMap = new Map(businesses.map(vendor => [vendor.id, { business_name: vendor.business_name, neighborhood: vendor.neighborhood }]));
@@ -688,14 +692,18 @@ function attachOrderData(orders: any[], orderItems: any[], businesses: any[] = [
 
 export async function createCustomerOrder(input: {
   customerUserId: string; customerName: string; customerPhone: string; fulfillmentMethod: FulfillmentMethod;
-  deliveryAddress: string | null; lines: CheckoutLine[]; idempotencyKey: string; isTestOrder: boolean;
+  deliveryAddress: string | null; lines: CheckoutLine[]; idempotencyKey: string; requestFingerprint: string;
+  expectedDeliveryFeeNgn: number | null; isTestOrder: boolean;
 }) {
   if (!supabaseClient) return { success: false as const, statusCode: 503, error: 'Order storage is unavailable. Apply the reviewed orders migration first.' };
   try {
     const { data: prior, error: priorError } = await supabaseClient.from('customer_orders')
-      .select('id, order_reference, total_ngn, is_test_order').eq('customer_user_id', input.customerUserId).eq('idempotency_key', input.idempotencyKey).maybeSingle();
+      .select('id, order_reference, total_ngn, is_test_order, idempotency_fingerprint').eq('customer_user_id', input.customerUserId).eq('idempotency_key', input.idempotencyKey).maybeSingle();
     if (priorError) return { success: false as const, statusCode: 503, error: 'Order storage is not ready. Apply the reviewed orders migration first.' };
-    if (prior) return { success: true as const, data: { id: prior.id, orderReference: prior.order_reference, totalNgn: Number(prior.total_ngn), isTestOrder: prior.is_test_order, created: false } };
+    if (prior) {
+      if (!prior.idempotency_fingerprint || prior.idempotency_fingerprint !== input.requestFingerprint) return { success: false as const, statusCode: 409, error: 'This checkout attempt cannot be safely reused. Check your order history before starting another order.' };
+      return { success: true as const, data: { id: prior.id, orderReference: prior.order_reference, totalNgn: Number(prior.total_ngn), isTestOrder: prior.is_test_order, created: false } };
+    }
 
     const ids = input.lines.map(line => line.menuItemId);
     const { data: menu, error: menuError } = await supabaseClient.from('vendor_menu_items')
@@ -704,6 +712,7 @@ export async function createCustomerOrder(input: {
     const resolvedItems = resolveAvailableOrderItems(input.lines, menu || []);
     if (!resolvedItems.success) return { success: false as const, statusCode: resolvedItems.error.includes('only one') ? 400 : 409, error: resolvedItems.error };
     const vendorId = resolvedItems.vendorId;
+    if (input.lines.some(line => Math.round(Number(menu?.find(row => row.id === line.menuItemId)?.price_ngn) * 100) !== Math.round(Number(line.expectedPriceNgn) * 100))) return { success: false as const, statusCode: 409, error: 'A menu price changed. Review the updated prices before placing your order.' };
     const { data: vendor, error: vendorError } = await supabaseClient.from('vendor_interest')
       .select('id, business_name, neighborhood, business_type, fulfillment_options, description, opening_hours, accepting_orders, status, delivery_fee_ngn')
       .eq('id', vendorId).maybeSingle();
@@ -716,18 +725,19 @@ export async function createCustomerOrder(input: {
     if (!getPublicStoreAvailability({ accepting_orders: vendor.accepting_orders, opening_hours: vendor.opening_hours }).open) {
       return { success: false as const, statusCode: 409, error: 'This food business is currently closed. Please try again during its opening hours.' };
     }
-    if (input.fulfillmentMethod === 'vendor_delivery' && vendor.delivery_fee_ngn === null) return { success: false as const, statusCode: 409, error: 'This business has not configured a delivery fee yet. Choose pickup or contact the business.' };
+    if (input.fulfillmentMethod === 'vendor_delivery' && (vendor.delivery_fee_ngn === null || vendor.delivery_fee_ngn === undefined || input.expectedDeliveryFeeNgn === null || !Number.isFinite(Number(vendor.delivery_fee_ngn)) || Math.round(Number(vendor.delivery_fee_ngn) * 100) !== Math.round(Number(input.expectedDeliveryFeeNgn) * 100))) return { success: false as const, statusCode: 409, error: 'The delivery fee changed or is not configured. Review checkout and try again.' };
 
     const { data, error } = await supabaseClient.rpc('create_customer_order', {
       p_customer_user_id: input.customerUserId, p_customer_name: input.customerName, p_customer_phone: input.customerPhone,
       p_fulfillment_method: input.fulfillmentMethod, p_delivery_address: input.deliveryAddress,
-      p_items: input.lines.map(line => ({ menuItemId: line.menuItemId, quantity: line.quantity })),
-      p_idempotency_key: input.idempotencyKey, p_is_test_order: input.isTestOrder
+      p_items: input.lines.map(line => ({ menuItemId: line.menuItemId, quantity: line.quantity, expectedPriceNgn: line.expectedPriceNgn })),
+      p_idempotency_key: input.idempotencyKey, p_is_test_order: input.isTestOrder,
+      p_request_fingerprint: input.requestFingerprint, p_expected_delivery_fee_ngn: input.expectedDeliveryFeeNgn
     });
     if (error) {
-      const clientError = ['22023', 'P0002'].includes(error.code || '');
-      return { success: false as const, statusCode: clientError ? (error.code === 'P0002' ? 409 : 400) : 503,
-        error: error.code === 'P0002' ? 'A menu item or business is no longer available. Refresh your cart and try again.' : clientError ? 'The checkout details are not valid for this business.' : 'The order could not be saved. Confirm the orders migration has been applied.' };
+      const clientError = ['22023', 'P0002', 'PZ001', 'PZ002'].includes(error.code || '');
+      return { success: false as const, statusCode: clientError ? (error.code === 'P0002' || error.code === 'PZ001' || error.code === 'PZ002' ? 409 : 400) : 503,
+        error: error.code === 'P0002' ? 'A menu item or business is no longer available. Refresh your cart and try again.' : error.code === 'PZ001' ? 'A price or delivery fee changed. Review the updated checkout details.' : error.code === 'PZ002' ? 'This checkout key was already used for different details. Start a fresh checkout after checking your orders.' : clientError ? 'The checkout details are not valid for this business.' : 'The order could not be saved. Confirm the orders migration has been applied.' };
     }
     const result = Array.isArray(data) ? data[0] : data;
     if (!result?.order_id || !result?.order_reference) return { success: false as const, statusCode: 503, error: 'The order could not be confirmed.' };
@@ -737,20 +747,47 @@ export async function createCustomerOrder(input: {
   }
 }
 
+export async function getCustomerOrderAttempt(customerUserId: string, idempotencyKey: string) {
+  if (!supabaseClient) return { success: false as const, statusCode: 503, error: 'Order status could not be confirmed.' };
+  try {
+    let query = supabaseClient.from('customer_orders').select('id, order_reference, total_ngn, is_test_order')
+      .eq('customer_user_id', customerUserId).eq('idempotency_key', idempotencyKey);
+    if (isProductionRuntime()) query = query.eq('is_test_order', false);
+    const { data, error } = await query.maybeSingle();
+    if (error) return { success: false as const, statusCode: 503, error: 'Order status could not be confirmed.' };
+    if (!data) return { success: true as const, data: null };
+    return { success: true as const, data: { id: data.id, orderReference: data.order_reference, totalNgn: Number(data.total_ngn), isTestOrder: data.is_test_order, created: false } };
+  } catch { return { success: false as const, statusCode: 503, error: 'Order status could not be confirmed.' }; }
+}
+
 export async function getCustomerOrders(userId: string): Promise<DbResult<CustomerOrderRecord[]>> {
   if (!supabaseClient) return { success: false, statusCode: 503, error: 'Order history is unavailable.' };
   try {
-    const { data: orders, error } = await supabaseClient.from('customer_orders').select(ORDER_SELECT).eq('customer_user_id', userId).order('created_at', { ascending: false });
-    if (error) return { success: false, statusCode: 503, error: 'Order history is temporarily unavailable.' };
+    let orderQuery = supabaseClient.from('customer_orders').select(ORDER_SELECT).eq('customer_user_id', userId);
+    if (isProductionRuntime()) orderQuery = orderQuery.eq('is_test_order', false);
+    const { data: orders, error } = await orderQuery.order('created_at', { ascending: false });
+    if (error) {
+      console.error('[WA JEUN DB] Customer order query failed.', { category: 'orders_query', code: error.code || 'unknown' });
+      return { success: false, statusCode: 503, error: 'Order history is temporarily unavailable.' };
+    }
     if (!orders?.length) return { success: true, data: [] };
     const ids = orders.map(order => order.id); const vendorIds = [...new Set(orders.map(order => order.vendor_interest_id))];
     const [{ data: items, error: itemError }, { data: vendors, error: vendorError }] = await Promise.all([
       supabaseClient.from('customer_order_items').select(ORDER_ITEM_SELECT).in('order_id', ids),
       supabaseClient.from('vendor_interest').select('id, business_name, neighborhood').in('id', vendorIds)
     ]);
-    if (itemError || vendorError) return { success: false, statusCode: 503, error: 'Order details are temporarily unavailable.' };
+    if (itemError || vendorError) {
+      console.error('[WA JEUN DB] Customer order details query failed.', {
+        category: itemError ? 'order_items_query' : 'vendor_summary_query',
+        code: itemError?.code || vendorError?.code || 'unknown'
+      });
+      return { success: false, statusCode: 503, error: 'Order details are temporarily unavailable.' };
+    }
     return { success: true, data: attachOrderData(orders, items || [], vendors || []) };
-  } catch { return { success: false, statusCode: 503, error: 'Order history is temporarily unavailable.' }; }
+  } catch {
+    console.error('[WA JEUN DB] Customer order history failed.', { category: 'unexpected_database_error' });
+    return { success: false, statusCode: 503, error: 'Order history is temporarily unavailable.' };
+  }
 }
 
 export async function getVendorOrders(userId: string, businessId?: string): Promise<DbResult<CustomerOrderRecord[]>> {
@@ -763,7 +800,9 @@ export async function getVendorOrders(userId: string, businessId?: string): Prom
     const ids = (vendors || []).map(vendor => vendor.id);
     if (businessId && !ids.length) return { success: false, statusCode: 404, error: 'Business not found for this account.' };
     if (!ids.length) return { success: true, data: [] };
-    const { data: orders, error } = await supabaseClient.from('customer_orders').select(ORDER_SELECT).in('vendor_interest_id', ids).order('created_at', { ascending: false });
+    let orderQuery = supabaseClient.from('customer_orders').select(ORDER_SELECT).in('vendor_interest_id', ids);
+    if (isProductionRuntime()) orderQuery = orderQuery.eq('is_test_order', false);
+    const { data: orders, error } = await orderQuery.order('created_at', { ascending: false });
     if (error) return { success: false, statusCode: 503, error: 'Vendor orders are temporarily unavailable.' };
     if (!orders?.length) return { success: true, data: [] };
     const { data: items, error: itemError } = await supabaseClient.from('customer_order_items').select(ORDER_ITEM_SELECT).in('order_id', orders.map(order => order.id));
@@ -775,6 +814,16 @@ export async function getVendorOrders(userId: string, businessId?: string): Prom
 export async function transitionVendorOrder(userId: string, orderId: string, nextStatus: string) {
   if (!supabaseClient) return { success: false as const, statusCode: 503, error: 'Vendor orders are unavailable.' };
   try {
+    if (isProductionRuntime()) {
+      const { data: businesses, error: businessError } = await supabaseClient.from('vendor_interest').select('id').eq('user_id', userId);
+      if (businessError) return { success: false as const, statusCode: 503, error: 'Order status could not be verified.' };
+      const businessIds = (businesses || []).map(row => row.id);
+      if (!businessIds.length) return { success: false as const, statusCode: 404, error: 'Order not found for this vendor account.' };
+      const { data: order, error: orderError } = await supabaseClient.from('customer_orders').select('id, is_test_order').eq('id', orderId).in('vendor_interest_id', businessIds).maybeSingle();
+      if (orderError) return { success: false as const, statusCode: 503, error: 'Order status could not be verified.' };
+      if (!order) return { success: false as const, statusCode: 404, error: 'Order not found for this vendor account.' };
+      if (order.is_test_order) return { success: false as const, statusCode: 409, error: 'Development test orders cannot be managed in production.' };
+    }
     const { data, error } = await supabaseClient.rpc('transition_vendor_order', { p_vendor_user_id: userId, p_order_id: orderId, p_next_status: nextStatus });
     if (error) return { success: false as const, statusCode: error.code === 'P0002' ? 404 : error.code === '22023' ? 409 : 503,
       error: error.code === 'P0002' ? 'Order not found for this vendor account.' : error.code === '22023' ? 'That order status change is not allowed.' : 'Order status could not be updated.' };
@@ -786,7 +835,7 @@ export async function getVendorDashboard(userId: string): Promise<DbResult<any[]
   if (!supabaseClient) return { success: false, statusCode: 503, error: 'Vendor dashboard is unavailable.' };
   try {
     const { data, error } = await supabaseClient.from('vendor_interest')
-      .select('id, business_name, neighborhood, business_type, fulfillment_options, delivery_fee_ngn, status, description, opening_hours, accepting_orders, created_at')
+      .select('id, business_name, contact_name, phone, email, neighborhood, business_type, fulfillment_options, delivery_fee_ngn, status, description, opening_hours, accepting_orders, created_at')
       .eq('user_id', userId).order('created_at', { ascending: false });
     if (error) throw error;
     const businesses = data || [];
@@ -824,10 +873,12 @@ export async function updateVendorProfile(userId: string, businessId: string, pr
   if (!owner.data) return { success: false as const, ...owner };
   if (!['approved', 'pending_review', 'under_review', 'contacted'].includes(owner.data.status)) return { success: false as const, statusCode: 403, error: 'This application cannot be edited in its current status.' };
   const { data, error } = await supabaseClient!.from('vendor_interest').update({
+    business_name: profile.businessName, business_type: profile.businessType,
+    contact_name: profile.contactName, phone: profile.phone, email: profile.email,
     description: profile.description, neighborhood: profile.neighborhood,
     opening_hours: profile.openingHours, fulfillment_options: profile.fulfillmentOptions, delivery_fee_ngn: profile.deliveryFeeNgn,
     updated_at: new Date().toISOString()
-  }).eq('id', businessId).eq('user_id', userId).select('id, business_name, neighborhood, business_type, fulfillment_options, delivery_fee_ngn, status, description, opening_hours, accepting_orders').single();
+  }).eq('id', businessId).eq('user_id', userId).select('id, business_name, contact_name, phone, email, neighborhood, business_type, fulfillment_options, delivery_fee_ngn, status, description, opening_hours, accepting_orders').single();
   return error ? { success: false as const, statusCode: 503, error: 'Business profile could not be saved.' } : { success: true as const, data };
 }
 
@@ -836,9 +887,10 @@ export async function setVendorAvailability(userId: string, businessId: string, 
   if (!owner.data) return { success: false as const, ...owner };
   if (!canManageMenu(owner.data.status)) return { success: false as const, statusCode: 403, error: 'Only approved businesses may change order availability.' };
   if (accepting) {
-    const { data: vendor } = await supabaseClient!.from('vendor_interest').select('description, opening_hours').eq('id', businessId).single();
+    const { data: vendor } = await supabaseClient!.from('vendor_interest').select('description, opening_hours, fulfillment_options, delivery_fee_ngn').eq('id', businessId).single();
     const { count } = await supabaseClient!.from('vendor_menu_items').select('id', { count: 'exact', head: true }).eq('vendor_interest_id', businessId).eq('available', true);
     if (!vendor?.description?.trim() || !vendor?.opening_hours || !count) return { success: false as const, statusCode: 400, error: 'Complete your storefront and add an available menu item before accepting orders.' };
+    if (vendor.fulfillment_options === 'delivery_varies' || (vendor.fulfillment_options === 'vendor_delivery' && (vendor.delivery_fee_ngn === null || !Number.isFinite(Number(vendor.delivery_fee_ngn))))) return { success: false as const, statusCode: 400, error: 'Configure a fixed delivery fee and supported fulfillment option before accepting orders.' };
   }
   const { data, error } = await supabaseClient!.from('vendor_interest').update({ accepting_orders: accepting, updated_at: new Date().toISOString() }).eq('id', businessId).eq('user_id', userId).select('accepting_orders').single();
   return error ? { success: false as const, statusCode: 503, error: 'Store availability could not be saved.' } : { success: true as const, data };
@@ -888,6 +940,13 @@ export async function uploadVendorMenuImage(userId: string, businessId: string, 
 export type PublicVendorFilters = { categories?: string[]; search?: string; neighborhood?: string; fulfillment?: 'pickup' | 'delivery' };
 export type PublicVendorListResult = { success: true; vendors: PublicVendor[]; total: number } | { success: false; statusCode: number; error: string };
 
+function isPublicFulfillmentConfigured(vendor: Record<string, any>): boolean {
+  const fee = vendor.delivery_fee_ngn === null || vendor.delivery_fee_ngn === undefined ? null : Number(vendor.delivery_fee_ngn);
+  const hasFee = fee !== null && Number.isFinite(fee) && fee >= 0;
+  if (vendor.fulfillment_options === 'pickup_only' || vendor.fulfillment_options === 'pickup_and_delivery') return true;
+  return vendor.fulfillment_options === 'vendor_delivery' && hasFee;
+}
+
 export function toPublicMenuItem(item: Record<string, any>) {
   const price = Number(item.price_ngn);
   if (item.available !== true || !Number.isFinite(price) || price <= 0) return null;
@@ -905,7 +964,7 @@ export function toPublicMenuItem(item: Record<string, any>) {
 export function matchesPublicVendorFilters(vendor: PublicVendor, filters: PublicVendorFilters) {
   if (filters.neighborhood && vendor.neighborhood.toLocaleLowerCase() !== filters.neighborhood.toLocaleLowerCase()) return false;
   if (filters.fulfillment === 'pickup' && !['pickup_only', 'pickup_and_delivery'].includes(vendor.fulfillment_options)) return false;
-  if (filters.fulfillment === 'delivery' && !['vendor_delivery', 'pickup_and_delivery'].includes(vendor.fulfillment_options)) return false;
+  if (filters.fulfillment === 'delivery' && (!['vendor_delivery', 'pickup_and_delivery'].includes(vendor.fulfillment_options) || vendor.delivery_fee_ngn === null || !Number.isFinite(vendor.delivery_fee_ngn) || vendor.delivery_fee_ngn < 0)) return false;
   if (filters.categories?.length && !vendor.menu.some(item => filters.categories!.includes(item.category))) return false;
   if (filters.search) {
     const needle = filters.search.toLocaleLowerCase();
@@ -937,7 +996,7 @@ export async function getVerifiedVendors(filters: PublicVendorFilters): Promise<
         return { success: false, statusCode: 503, error: 'The food directory is temporarily unavailable. Please try again.' };
       }
 
-      const candidates = (data || []).filter(vendor => isVendorSellEligible({
+      const candidates = (data || []).filter(vendor => isPublicFulfillmentConfigured(vendor) && isVendorSellEligible({
         status: vendor.status, business_name: vendor.business_name, neighborhood: vendor.neighborhood,
         business_type: vendor.business_type, fulfillment_options: vendor.fulfillment_options,
         description: vendor.description, opening_hours: vendor.opening_hours,
@@ -973,7 +1032,7 @@ export async function getVerifiedVendors(filters: PublicVendorFilters): Promise<
     const devDb = readDevDbStrict();
     const vendors = (devDb.vendors || []).map((vendor: Record<string, any>) => {
       const items = (vendor.menu || []).filter((item: Record<string, any>) => item.available === true);
-      if (!isVendorSellEligible({
+      if (!isPublicFulfillmentConfigured(vendor) || !isVendorSellEligible({
         status: vendor.status, business_name: vendor.business_name, neighborhood: vendor.neighborhood,
         business_type: vendor.business_type, fulfillment_options: vendor.fulfillment_options,
         description: vendor.description, opening_hours: vendor.opening_hours,
@@ -994,7 +1053,7 @@ export async function getPublicVendorMenu(businessId: string): Promise<DbResult<
     try {
       const devDb = readDevDbStrict();
       const vendor = (devDb.vendors || []).find((entry: Record<string, any>) => entry.id === businessId);
-      if (!vendor) return { success: false, statusCode: 404, error: 'This food business is not currently available.' };
+      if (!vendor || !isPublicFulfillmentConfigured(vendor)) return { success: false, statusCode: 404, error: 'This food business is not currently available.' };
       const menu = (vendor.menu || []).filter((item: Record<string, any>) => item.available === true);
       if (!isVendorSellEligible({
         status: vendor.status, business_name: vendor.business_name, neighborhood: vendor.neighborhood,
@@ -1018,7 +1077,7 @@ export async function getPublicVendorMenu(businessId: string): Promise<DbResult<
       .select('id, vendor_interest_id, name, description, price_ngn, category, image_url, available')
       .eq('vendor_interest_id', businessId).eq('available', true);
     if (menuError) return { success: false, statusCode: 503, error: 'This menu is temporarily unavailable. Please try again.' };
-    if (!isVendorSellEligible({
+    if (!isPublicFulfillmentConfigured(vendor) || !isVendorSellEligible({
       status: vendor.status, business_name: vendor.business_name, neighborhood: vendor.neighborhood,
       business_type: vendor.business_type, fulfillment_options: vendor.fulfillment_options,
       description: vendor.description, opening_hours: vendor.opening_hours,
@@ -1086,7 +1145,7 @@ export async function getHealthStats(): Promise<{
     }
   }
 
-  if (!supabaseClient && process.env.NODE_ENV === 'production') {
+  if (!supabaseClient && isProductionRuntime()) {
     return {
       status: 'configuration-required',
       storageMode: mode,

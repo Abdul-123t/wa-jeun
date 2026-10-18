@@ -18,11 +18,11 @@ export const CustomerOrdersPage: React.FC = () => {
   useEffect(() => {
     let active = true;
     if (!session?.access_token) { setLoading(false); return; }
-    api.getCustomerOrders(session.access_token).then(result => { if (active) setOrders(result.orders); })
+    api.getCustomerOrders(session.access_token).then(result => { if (active) { setOrders(result.orders); setError(''); } })
       .catch(reason => { if (active) setError(reason instanceof Error ? reason.message : 'Your order history is unavailable.'); })
       .finally(() => { if (active) setLoading(false); });
     const timer = window.setInterval(() => {
-      api.getCustomerOrders(session.access_token).then(result => { if (active) setOrders(result.orders); }).catch(() => undefined);
+      api.getCustomerOrders(session.access_token).then(result => { if (active) { setOrders(result.orders); setError(''); } }).catch(reason => { if (active) setError(reason instanceof Error ? reason.message : 'Order status could not be refreshed. Use Refresh to try again.'); });
     }, 20000);
     return () => { active = false; window.clearInterval(timer); };
   }, [session?.access_token, refreshCount]);

@@ -15,12 +15,15 @@ import { join } from 'node:path';
 import express from 'express';
 import { createRateLimiter, resetRateLimits } from '../src/server/rateLimiter';
 import { configureClientIpTrust } from '../src/server/clientIp';
+import { isProductionRuntime } from '../src/server/runtimeMode';
 import { getAdminAccessViewState, getProtectedRouteState, isVerifiedMember, validateAuthInput } from '../src/auth/authRules';
 import { authorizeAdminHeader, parseBearerAuthorization, verifyAccessToken } from '../src/server/authTokens';
-import { api } from '../src/services/api';
+import { api, ApiError } from '../src/services/api';
+import { clearCheckoutAttempt, persistCheckoutAttempt, readCheckoutAttempt } from '../src/services/checkoutAttempt';
 import { getPublicStoreAvailability } from '../src/services/storeHours';
+import { findCartPriceChanges } from '../src/services/cartPricing';
 import { canManageMenu, isVendorSellEligible, isVendorOwner, isTrustedMenuImageUrl, validateMenuItem, validateOpeningHours } from '../src/server/vendorRules';
-import { calculateOrderTotals, canTransitionOrder, parseCheckoutLines, resolveAvailableOrderItems, validateCheckoutContact, validateFulfillment } from '../src/server/orderRules';
+import { calculateOrderTotals, canTransitionOrder, createOrderRequestFingerprint, parseCheckoutLines, resolveAvailableOrderItems, validateCheckoutContact, validateFulfillment } from '../src/server/orderRules';
 
 // Keep this suite strictly local even when developer or CI environments contain
 // Supabase credentials. No test should make a network connection to a project.
@@ -70,6 +73,17 @@ async function runTests() {
 
   resetRateLimits();
 
+  console.log('--- Suite: Customer storefront and cart pricing ---');
+  const cartPricingLine = { menuItemId: 'menu-1', name: 'Rice', description: '', category: 'rice', priceNgn: 2500, imageUrl: null, quantity: 2 };
+  const currentMenuItem = { id: 'menu-1', name: 'Rice', description: '', category: 'rice', price_ngn: 2750, image_url: null, available: true as const };
+  const changedCartPrices = findCartPriceChanges([cartPricingLine], [currentMenuItem]);
+  assert(changedCartPrices.length === 1 && changedCartPrices[0].previousPriceNgn === 2500 && changedCartPrices[0].currentPriceNgn === 2750, 'Cart price comparison detects current menu changes for explicit customer review');
+  assert(findCartPriceChanges([cartPricingLine], [{ ...currentMenuItem, price_ngn: 2500 }]).length === 0, 'Cart price comparison does not warn when the current menu price is unchanged');
+  const storefrontSource = readFileSync(new URL('../src/pages/PublicVendorMenuPage.tsx', import.meta.url), 'utf8');
+  const cartPageSource = readFileSync(new URL('../src/pages/CartPage.tsx', import.meta.url), 'utf8');
+  assert(storefrontSource.includes('addItem(vendor, item)') && storefrontSource.includes('Clear cart and add') && storefrontSource.includes('Add to cart'), 'Public storefront can add items and explicitly handle a one-vendor cart conflict');
+  assert(cartPageSource.includes('I’ve reviewed the updated prices') && cartPageSource.includes('!priceChangesConfirmed'), 'Checkout requires confirmation after a refreshed menu price differs from the cart price');
+
   console.log('--- Suite: Rate Limiting and Proxy Trust ---');
   assert(
     ['/brand/wa-jeun-logo.webp', '/brand/wa-jeun-icon-64.png', '/brand/favicon.ico', '/brand/favicon-32.png', '/brand/favicon-16.png', '/brand/apple-touch-icon.png']
@@ -117,10 +131,15 @@ async function runTests() {
   const directSettings: Array<[string, unknown]> = [];
   configureClientIpTrust({ set: (key, value) => { directSettings.push([key, value]); } }, { NODE_ENV: 'production', WAJEUN_CLIENT_IP_MODE: 'direct' });
   assert(directSettings[0]?.[0] === 'trust proxy' && directSettings[0]?.[1] === false, 'Direct production ingress ignores all forwarded headers');
+  assert(isProductionRuntime({ VERCEL: '1' }) && isProductionRuntime({ VERCEL_ENV: 'preview' }) && !isProductionRuntime({ NODE_ENV: 'development' }), 'Vercel runtime markers consistently select production-safe server behavior');
   let missingTopologyRejected = false;
   try { configureClientIpTrust({ set() { return this; } }, { NODE_ENV: 'production' }); }
   catch { missingTopologyRejected = true; }
   assert(missingTopologyRejected, 'Production startup fails closed when the proxy topology is not configured');
+  let vercelTopologyRejected = false;
+  try { configureClientIpTrust({ set() { return this; } }, { VERCEL: '1' }); }
+  catch { vercelTopologyRejected = true; }
+  assert(vercelTopologyRejected, 'Vercel runtimes without NODE_ENV still require an explicit verified proxy policy');
   let malformedProxyRejected = false;
   try { configureClientIpTrust({ set() { return this; } }, { NODE_ENV: 'production', WAJEUN_CLIENT_IP_MODE: 'trusted-proxy', WAJEUN_TRUSTED_PROXY_CIDRS: 'not-an-ip' }); }
   catch { malformedProxyRejected = true; }
@@ -436,12 +455,24 @@ async function runTests() {
   assert(isVerifiedMember('founder-id', 'founder-id'), 'A membership confirmed for the current verified user may unlock its navigation');
 
   const { app, apiNotFoundHandler, apiErrorHandler } = await import('../server.ts');
+  const vercelConfig = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8')) as {
+    buildCommand: string; outputDirectory: string; rewrites: Array<{ source: string; destination: string }>;
+  };
+  const viteConfigSource = readFileSync(new URL('../vite.config.ts', import.meta.url), 'utf8');
+  const vercelCatchAll = await import('../api/[...path].ts');
+  const vercelApiRoot = await import('../api/index.ts');
+  assert(vercelConfig.buildCommand === 'npm run build' && vercelConfig.outputDirectory === 'dist/client' && viteConfigSource.includes("outDir: 'dist/client'"), 'Vercel publishes the Vite build output directory');
+  assert(vercelConfig.rewrites.some(rule => rule.destination === '/index.html' && rule.source.includes('(?!api')) && vercelConfig.rewrites.some(rule => rule.source === '/'), 'SPA fallback serves the root and excludes API paths');
+  assert(vercelCatchAll.default === app && vercelApiRoot.default === app && readFileSync(new URL('../server.ts', import.meta.url), 'utf8').includes('export default app'), 'Vercel API functions export the shared Express app');
   const vendorDashboardRouteLayer = (app as any)._router.stack.find((layer: any) =>
     layer.route?.path === '/api/vendor/dashboard' && layer.route.methods.get
   );
   assert(Boolean(vendorDashboardRouteLayer), 'Actual vendor dashboard GET route is registered at the frontend URL');
+  const vendorApplicationLayer = (app as any)._router.stack.find((layer: any) => layer.route?.path === '/api/interest/vendor' && layer.route.methods.post);
+  assert(Boolean(vendorApplicationLayer), 'Authenticated vendor application API route is registered');
   const apiClientSource = readFileSync(new URL('../src/services/api.ts', import.meta.url), 'utf8');
   assert(apiClientSource.includes("fetch('/api/vendor/dashboard'") , 'Vendor dashboard client calls the registered GET route');
+  assert(apiClientSource.includes("fetch(`/api/vendors") && apiClientSource.includes("fetch('/api/customer/orders'") , 'Food directory and customer history call same-origin API routes');
   let adminRouteCalled = false;
   const adminRouteLayer = (app as any)._router.stack.find((layer: any) =>
     layer.route?.path === '/api/admin/vendor-applications' && layer.route.methods.get
@@ -464,6 +495,12 @@ async function runTests() {
     if (error !== undefined) handler(error, req, response, next);
     else handler(req, response, next);
   });
+  if (vendorApplicationLayer) {
+    const result = await invokeHandler(vendorApplicationLayer.route.stack[vendorApplicationLayer.route.stack.length - 1].handle, {
+      get: () => undefined, params: {}, query: {}, body: { businessName: 'Test Kitchen', contactName: 'Test Owner', phone: '08012345678', neighborhood: 'Ijebu Ode', businessType: 'restaurant', fulfillmentOptions: 'pickup_only', currentOrderingMethods: ['walk_in'], consentAccepted: true }
+    });
+    assert(result.status === 401 && result.contentType === 'application/json', 'Vendor application cannot be submitted anonymously or left unlinked to a verified owner');
+  }
   const publicVendorsRouteLayer = (app as any)._router.stack.find((layer: any) => layer.route?.path === '/api/vendors' && layer.route.methods.get);
   const publicMenuRouteLayer = (app as any)._router.stack.find((layer: any) => layer.route?.path === '/api/vendors/:businessId/menu' && layer.route.methods.get);
   assert(Boolean(publicVendorsRouteLayer && publicMenuRouteLayer), 'Public discovery and restaurant menu API routes are registered');
@@ -471,23 +508,64 @@ async function runTests() {
     const result = await invokeHandler(publicVendorsRouteLayer.route.stack[0].handle, { query: {}, params: {} });
     assert(result.status === 200 && result.body.success === true && result.body.status === 'empty' && result.body.vendors.length === 0, 'Public vendors API distinguishes a successful empty directory');
   }
+  assert(readFileSync(new URL('../src/server/db.ts', import.meta.url), 'utf8').includes(".eq('customer_user_id', userId)"), 'Customer order history query is scoped to the verified customer ID');
+  {
+    const originalFetch = globalThis.fetch;
+    const originalWarn = console.warn;
+    const capturedLogs: unknown[][] = [];
+    const issuedRequests: Array<{ url: string; headers: Headers }> = [];
+    console.warn = (...args: unknown[]) => { capturedLogs.push(args); };
+    try {
+      globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+        issuedRequests.push({ url: String(input), headers: new Headers(init?.headers) });
+        return new Response(JSON.stringify({ success: true, vendors: [], total: 0, status: 'empty' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }) as typeof fetch;
+      const emptyDirectory = await api.getVendors();
+      assert(emptyDirectory.success && emptyDirectory.vendors.length === 0, 'API client accepts a valid empty food directory');
+
+      globalThis.fetch = (async () => new Response(JSON.stringify({ success: false, error: 'The food directory is temporarily unavailable. Please try again.' }), { status: 503, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
+      let directoryFailure: unknown;
+      try { await api.getVendors(); } catch (error) { directoryFailure = error; }
+      assert(directoryFailure instanceof ApiError && directoryFailure.status === 503 && directoryFailure.category === 'service_unavailable', 'Directory database/API failure remains a recoverable typed error');
+
+      globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+        issuedRequests.push({ url: String(input), headers: new Headers(init?.headers) });
+        return new Response(JSON.stringify({ success: false, error: 'Your session is invalid or expired.' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+      }) as typeof fetch;
+      let ordersFailure: unknown;
+      const privateToken = 'test-only-private-token';
+      try { await api.getCustomerOrders(privateToken); } catch (error) { ordersFailure = error; }
+      assert(ordersFailure instanceof ApiError && ordersFailure.status === 401 && ordersFailure.category === 'unauthorized', 'Expired order-history sessions remain distinguishable as 401');
+      assert(issuedRequests.at(-1)?.url === '/api/customer/orders' && issuedRequests.at(-1)?.headers.get('authorization') === `Bearer ${privateToken}`, 'Order-history request attaches the current session token');
+      globalThis.fetch = (async () => new Response(JSON.stringify({ success: true, orders: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
+      const emptyOrderHistory = await api.getCustomerOrders(privateToken);
+      assert(emptyOrderHistory.success && emptyOrderHistory.orders.length === 0, 'Authenticated customer order history accepts a valid empty result');
+      const safeLog = JSON.stringify(capturedLogs);
+      assert(safeLog.includes('GET /api/vendors') && safeLog.includes('503') && safeLog.includes('service_unavailable') && safeLog.includes('GET /api/customer/orders') && safeLog.includes('401') && safeLog.includes('unauthorized'), 'API diagnostics include endpoint, status, and safe error category');
+      assert(!safeLog.includes(privateToken), 'API diagnostics never include access tokens');
+    } finally {
+      globalThis.fetch = originalFetch;
+      console.warn = originalWarn;
+    }
+  }
   if (publicMenuRouteLayer) {
     const result = await invokeHandler(publicMenuRouteLayer.route.stack[0].handle, { query: {}, params: { businessId: 'unknown' } });
     assert(result.status === 404 && result.body.success === false, 'Unknown or no longer eligible restaurant menus return unavailable');
   }
   const customerOrdersLayer = (app as any)._router.stack.find((layer: any) => layer.route?.path === '/api/customer/orders' && layer.route.methods.get);
+  const customerAttemptLayer = (app as any)._router.stack.find((layer: any) => layer.route?.path === '/api/customer/orders/attempt/:key' && layer.route.methods.get);
   const customerCreateOrderLayer = (app as any)._router.stack.find((layer: any) => layer.route?.path === '/api/customer/orders' && layer.route.methods.post);
   const vendorOrdersLayer = (app as any)._router.stack.find((layer: any) => layer.route?.path === '/api/vendor/orders' && layer.route.methods.get);
   const vendorOrderStatusLayer = (app as any)._router.stack.find((layer: any) => layer.route?.path === '/api/vendor/orders/:orderId/status' && layer.route.methods.patch);
-  assert(Boolean(customerOrdersLayer && customerCreateOrderLayer && vendorOrdersLayer && vendorOrderStatusLayer), 'Customer history, checkout, vendor inbox, and status API routes are registered');
-  for (const [layer, method] of [[customerOrdersLayer, 'Customer order history'], [customerCreateOrderLayer, 'Customer checkout'], [vendorOrdersLayer, 'Vendor order inbox'], [vendorOrderStatusLayer, 'Vendor order status']] as const) {
+  assert(Boolean(customerOrdersLayer && customerAttemptLayer && customerCreateOrderLayer && vendorOrdersLayer && vendorOrderStatusLayer), 'Customer history, checkout recovery, vendor inbox, and status API routes are registered');
+  for (const [layer, method] of [[customerOrdersLayer, 'Customer order history'], [customerAttemptLayer, 'Customer checkout recovery'], [customerCreateOrderLayer, 'Customer checkout'], [vendorOrdersLayer, 'Vendor order inbox'], [vendorOrderStatusLayer, 'Vendor order status']] as const) {
     if (layer) {
       const result = await invokeHandler(layer.route.stack[layer.route.stack.length - 1].handle, { get: () => undefined, params: {}, query: {}, body: {} });
       assert(result.status === 401 && result.contentType === 'application/json', `${method} requires a verified access token`);
     }
   }
   const orderMigrationSource = readFileSync(new URL('../docs/migrations/20261019_customer_orders.sql', import.meta.url), 'utf8');
-  assert(serverSource.includes('if (!isDevelopment) return res.status(503)') && serverSource.includes('isTestOrder: true') && orderMigrationSource.includes("payment_status = 'test_unpaid'"), 'Only development checkout can create unpaid test orders');
+  assert(serverSource.includes('if (!isDevelopment) return res.status(503)') && serverSource.includes('const isProduction = isProductionRuntime()') && serverSource.includes('isTestOrder: true') && orderMigrationSource.includes("payment_status = 'test_unpaid'"), 'Production and Vercel checkout remain disabled; only local development can create unpaid test orders');
   if (vendorDashboardRouteLayer) {
     const result = await invokeHandler(vendorDashboardRouteLayer.route.stack[0].handle, {
       get: () => undefined, params: {}, query: {}, body: {}
@@ -525,6 +603,7 @@ async function runTests() {
   const migrationSource = readFileSync(new URL('../docs/migrations/20261017_authentication_foundation.sql', import.meta.url), 'utf8');
   const adminMigration = readFileSync(new URL('../docs/migrations/20261017_super_admin_vendor_review.sql', import.meta.url), 'utf8');
   const dbSource = readFileSync(new URL('../src/server/db.ts', import.meta.url), 'utf8');
+  assert(dbSource.includes(".eq('id', businessId).eq('user_id', userId).select('id, business_name, contact_name, phone, email") && serverSource.includes('ownerUserId = verified.data.userId'), 'Vendor profile writes stay scoped to the verified owner, and application ownership is server-derived');
   assert(
     dbSource.includes(".from('admin_users')") && dbSource.includes(".select('user_id')") && dbSource.includes(".eq('user_id', userId)") &&
       adminMigration.includes('user_id UUID PRIMARY KEY REFERENCES auth.users (id)'),
@@ -549,14 +628,16 @@ async function runTests() {
   const publicFixture = { id: 'v1', business_name: 'Test Kitchen', neighborhood: 'Molipa', business_type: 'restaurant', fulfillment_options: 'pickup_and_delivery', delivery_fee_ngn: null, description: 'Fresh meals prepared daily.', opening_hours: completeHours, accepting_orders: true, menu: [{ id: 'm1', name: 'Jollof Rice', description: '', price_ngn: 2500, category: 'rice', image_url: null, available: true as const }] };
   const projectedListing = toPublicVendorListing({ ...publicFixture, phone: '+2348012345678', email: 'private@example.test', message: 'private note', status: 'approved', user_id: 'private-user' }, [{ ...publicFixture.menu[0], vendor_interest_id: 'v1', phone: 'private' }]);
   assert(!JSON.stringify(projectedListing).includes('private@example.test') && !JSON.stringify(projectedListing).includes('private note') && !('status' in projectedListing), 'Public restaurant data excludes application contacts, review status, account IDs, and private messages');
+  assert(projectedListing.fulfillment_options === 'pickup_only' && matchesPublicVendorFilters(projectedListing, { fulfillment: 'pickup' }) && !matchesPublicVendorFilters(projectedListing, { fulfillment: 'delivery' }), 'A vendor with no configured delivery fee is shown as pickup only and excluded from delivery results');
+  assert(toPublicVendor({ ...publicFixture, fulfillment_options: 'vendor_delivery', delivery_fee_ngn: null }).delivery_fee_ngn === null && !matchesPublicVendorFilters({ ...publicFixture, fulfillment_options: 'vendor_delivery', delivery_fee_ngn: null }, { fulfillment: 'delivery' }), 'Delivery without a fixed fee is not advertised as available');
   const projectedItem = toPublicMenuItem({ id: 'm2', name: 'Amala', description: 'With ewedu', price_ngn: '3000', category: 'swallow', image_url: 'https://attacker.example/meal.jpg', available: true, vendor_interest_id: 'private-vendor', updated_at: 'private' });
   assert(Boolean(projectedItem && Object.keys(projectedItem).sort().join(',') === 'available,category,description,id,image_url,name,price_ngn' && projectedItem.image_url === null && projectedItem.price_ngn === 3000), 'Public menu item projection allowlists fields, normalizes NGN price, and rejects untrusted images');
   assert(matchesPublicVendorFilters(publicFixture, { search: 'jollof' }) && matchesPublicVendorFilters(publicFixture, { search: 'test kitchen' }) && !matchesPublicVendorFilters(publicFixture, { search: 'amala' }), 'Public search matches persisted business and available menu item names');
-  assert(matchesPublicVendorFilters(publicFixture, { categories: ['rice'] }) && !matchesPublicVendorFilters(publicFixture, { categories: ['snacks'] }) && matchesPublicVendorFilters(publicFixture, { neighborhood: 'molipa' }) && matchesPublicVendorFilters(publicFixture, { fulfillment: 'delivery' }), 'Public category, neighborhood, and delivery filters affect the returned results');
+  assert(matchesPublicVendorFilters(publicFixture, { categories: ['rice'] }) && !matchesPublicVendorFilters(publicFixture, { categories: ['snacks'] }) && matchesPublicVendorFilters(publicFixture, { neighborhood: 'molipa' }) && matchesPublicVendorFilters({ ...publicFixture, delivery_fee_ngn: 850 }, { fulfillment: 'delivery' }), 'Public category, neighborhood, and configured delivery filters affect the returned results');
   const menuId = '00000000-0000-4000-8000-000000000001';
-  const cartParse = parseCheckoutLines([{ menuItemId: menuId, quantity: 2, priceNgn: 1, vendorId: 'spoofed' }]);
+  const cartParse = parseCheckoutLines([{ menuItemId: menuId, quantity: 2, expectedPriceNgn: 1200, priceNgn: 1, vendorId: 'spoofed' }]);
   assert(cartParse.success && !('priceNgn' in cartParse.lines[0]) && !('vendorId' in cartParse.lines[0]), 'Checkout parser discards browser-supplied price and vendor fields');
-  assert(!parseCheckoutLines([{ menuItemId: menuId, quantity: 0 }]).success && !parseCheckoutLines([{ menuItemId: menuId, quantity: 100 }]).success, 'Invalid and excessive quantities are rejected');
+  assert(!parseCheckoutLines([{ menuItemId: menuId, quantity: 0, expectedPriceNgn: 1200 }]).success && !parseCheckoutLines([{ menuItemId: menuId, quantity: 100, expectedPriceNgn: 1200 }]).success && !parseCheckoutLines([{ menuItemId: menuId, quantity: 1 }]).success, 'Invalid quantities and missing quote prices are rejected');
   const resolvedCart = cartParse.success ? resolveAvailableOrderItems(cartParse.lines, [{ id: menuId, vendor_interest_id: 'vendor-real', price_ngn: 2500, available: true }]) : null;
   const canonicalTotal = resolvedCart?.success ? calculateOrderTotals([{ price_ngn: resolvedCart.items[0].priceNgn, quantity: resolvedCart.items[0].quantity }], 750).totalNgn : -1;
   assert(resolvedCart?.success === true && canonicalTotal === 5750, 'Totals use the live database price and configured fee rather than a manipulated browser price');
@@ -566,12 +647,29 @@ async function runTests() {
   assert(validateFulfillment('pickup', null, ['pickup_only']).success && validateFulfillment('vendor_delivery', 'Molipa Junction, near the market', ['vendor_delivery']).success && !validateFulfillment('vendor_delivery', '', ['vendor_delivery']).success && !validateFulfillment('pickup', null, ['vendor_delivery']).success, 'Fulfillment choices and delivery address are validated');
   assert(canTransitionOrder('placed', 'accepted', 'pickup') && canTransitionOrder('placed', 'rejected', 'pickup') && canTransitionOrder('preparing', 'ready_for_pickup', 'pickup') && canTransitionOrder('preparing', 'out_for_delivery', 'vendor_delivery') && !canTransitionOrder('placed', 'completed', 'pickup') && !canTransitionOrder('preparing', 'out_for_delivery', 'pickup'), 'Order status transitions follow the fulfillment workflow and reject invalid jumps');
   const orderMigration = readFileSync(new URL('../docs/migrations/20261019_customer_orders.sql', import.meta.url), 'utf8');
+  const reliabilityMigration = readFileSync(new URL('../docs/migrations/20261020_order_reliability.sql', import.meta.url), 'utf8');
   assert(orderMigration.includes('UNIQUE (customer_user_id, idempotency_key)') && orderMigration.includes('ON CONFLICT (customer_user_id, idempotency_key) DO NOTHING'), 'Checkout retries are idempotent per authenticated customer');
   assert(orderMigration.includes('customer_user_id = (SELECT auth.uid())') && orderMigration.includes('v.user_id = (SELECT auth.uid())') && orderMigration.includes('p_vendor_user_id'), 'Order RLS and vendor transitions scope access to verified customer and vendor ownership');
+  const idempotencyInput = { customerUserId: 'customer-a', customerName: 'Ada Customer', customerPhone: '+2348031234567', fulfillmentMethod: 'pickup' as const, deliveryAddress: null, expectedDeliveryFeeNgn: null, lines: [{ menuItemId: menuId, quantity: 2, expectedPriceNgn: 1200 }] };
+  assert(createOrderRequestFingerprint(idempotencyInput) === createOrderRequestFingerprint({ ...idempotencyInput, lines: [...idempotencyInput.lines] }) && createOrderRequestFingerprint(idempotencyInput) !== createOrderRequestFingerprint({ ...idempotencyInput, customerUserId: 'customer-b' }) && createOrderRequestFingerprint(idempotencyInput) !== createOrderRequestFingerprint({ ...idempotencyInput, lines: [{ ...idempotencyInput.lines[0], quantity: 3 }] }), 'Order fingerprints bind customer and payload for safe retry reuse');
+  const priorStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  const storage = new Map<string, string>();
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { getItem: (key: string) => storage.get(key) || null, setItem: (key: string, value: string) => storage.set(key, value), removeItem: (key: string) => storage.delete(key) } });
+  const storedAttempt = { idempotencyKey: '00000000-0000-4000-8000-000000000009', fingerprint: 'a'.repeat(64) };
+  persistCheckoutAttempt('customer-a', storedAttempt);
+  const recoveredAttempt = readCheckoutAttempt('customer-a');
+  assert(recoveredAttempt?.idempotencyKey === storedAttempt.idempotencyKey && readCheckoutAttempt('customer-b') === null, 'Checkout attempt survives a page refresh and stays isolated by customer');
+  clearCheckoutAttempt('customer-a', storedAttempt.idempotencyKey);
+  assert(readCheckoutAttempt('customer-a') === null, 'A confirmed checkout attempt can be cleared safely');
+  if (priorStorage) Object.defineProperty(globalThis, 'localStorage', priorStorage); else delete (globalThis as { localStorage?: Storage }).localStorage;
+  assert(reliabilityMigration.includes('idempotency_fingerprint') && reliabilityMigration.includes("ERRCODE = 'PZ002'") && reliabilityMigration.includes('ON CONFLICT (customer_user_id, idempotency_key) DO NOTHING'), 'Reliability migration stores and checks request fingerprints on concurrent retries');
+  assert(reliabilityMigration.includes("timezone('Africa/Lagos'") && reliabilityMigration.includes('FOR SHARE') && reliabilityMigration.includes("ERRCODE = 'PZ001'"), 'Order transaction rechecks Lagos opening hours, locked item prices and delivery fee');
+  assert(reliabilityMigration.includes('IF NOT FOUND THEN') && reliabilityMigration.includes('v_existing.idempotency_fingerprint IS DISTINCT FROM p_request_fingerprint') && reliabilityMigration.includes('REVOKE ALL ON FUNCTION public.create_customer_order'), 'Concurrent key collisions compare payload fingerprints and disable the old server RPC signature');
   assert(getPublicStoreAvailability(publicFixture, new Date('2026-10-19T09:30:00Z')).open && !getPublicStoreAvailability({ ...publicFixture, accepting_orders: false }, new Date('2026-10-19T09:30:00Z')).open, 'Public store status respects opening hours and the persisted accepting-orders setting');
   assert(validateMenuItem({ name: 'Jollof Rice', description: '', priceNgn: 1500, category: 'rice', available: true }) === null && Boolean(validateMenuItem({ name: 'Meal', description: '', priceNgn: -10, category: 'rice' })) && Boolean(validateMenuItem({ name: 'Meal', description: '', priceNgn: Infinity, category: 'rice' })), 'Menu price validation rejects negative and non-finite values');
   const vendorDbSource = readFileSync(new URL('../src/server/db.ts', import.meta.url), 'utf8');
   assert(vendorDbSource.includes(".eq('user_id', userId)") && vendorDbSource.includes(".eq('vendor_interest_id', businessId)"), 'Menu reads and writes are scoped to the authenticated owner business');
+  assert((vendorDbSource.match(/\.eq\('is_test_order', false\)/g)?.length || 0) >= 3 && vendorDbSource.includes('if (order.is_test_order)'), 'Production customer/vendor lists and checkout recovery exclude test orders, and production status changes reject them');
   const vendorMigration = readFileSync(new URL('../docs/migrations/20261018_vendor_dashboard_menu.sql', import.meta.url), 'utf8');
   assert(vendorMigration.includes('ENABLE ROW LEVEL SECURITY') && vendorMigration.includes('vendor-menu-images') && vendorMigration.includes('service_role'), 'Vendor menu migration applies RLS and isolates public food image storage');
   assert(vendorMigration.indexOf("SELECT 1 FROM storage.buckets WHERE id = 'vendor-menu-images'") < vendorMigration.indexOf('ALTER TABLE public.vendor_interest') && vendorMigration.includes('RAISE EXCEPTION') && !vendorMigration.includes('ON CONFLICT (id) DO UPDATE'), 'Vendor image bucket preflight fails before schema changes and never alters an existing bucket');
@@ -610,7 +708,7 @@ async function runTests() {
     try { await api.getAdminVendorApplications('mock-access-token'); }
     catch (error) { nonJsonError = error instanceof Error ? error.message : ''; }
     assert(adminListUrl === '/api/admin/vendor-applications', 'Admin list request uses the implemented API URL');
-    assert(nonJsonError.includes('non-JSON response (HTTP 200)'), 'Admin client reports an HTML response clearly without JSON parse noise');
+    assert(nonJsonError === 'The service response could not be read. Please retry.', 'Admin client handles non-JSON service responses without exposing proxy details');
 
     globalThis.fetch = async input => {
       assert(String(input).includes('search=jollof') && String(input).includes('neighborhood=Molipa') && String(input).includes('fulfillment=pickup'), 'Explore API sends supported search and filter values to the backend');

@@ -29,7 +29,7 @@ export const AboutPage: React.FC = () => {
 
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#123B2A]/5 text-[#123B2A] text-xs font-semibold">
             <MapPin className="w-3.5 h-3.5 text-[#123B2A]" />
-            <span>Built for Ijebu Ode, Ogun State, Nigeria</span>
+            <span>Built in Ijebu. Made for Ijebu.</span>
           </div>
 
           <h1 className="font-display text-3xl sm:text-5xl font-extrabold text-[#123B2A] tracking-tight">
@@ -37,7 +37,7 @@ export const AboutPage: React.FC = () => {
           </h1>
 
           <p className="text-base sm:text-lg text-[#20231F]/80 max-w-2xl mx-auto leading-relaxed">
-            wá jẹun is an independent initiative designed to modernize how people discover local meals and how local food businesses reach everyday customers.
+            wá jẹun is an independent food platform rooted in Ijebu Ode, Ogun State. We are building it to help residents discover the restaurants, bukas, grills, bakeries, and independent food businesses that make our city special.
           </p>
 
         </div>
@@ -59,7 +59,7 @@ export const AboutPage: React.FC = () => {
                 Ijebu Ode is renowned across Nigeria for its rich culinary culture—from legendary bukateria delicacies and traditional soup kitchens to vibrant street grills and contemporary eateries.
               </p>
               <p>
-                Yet discovering what is available, looking up verified menus, or checking current prices often requires physical visits, phone calls, or fragmented messaging. wá jẹun is being built to bridge this gap: providing a dedicated, unified online space where residents, workers, and visitors can explore their city's culinary landscape.
+                Finding what is available and checking menus or prices can mean visiting in person, calling, or searching through scattered messages. wá jẹun is being built as one place for residents, workers, and visitors to discover food businesses around the city, starting in Ijebu Ode and with room to grow across Ogun State, Nigeria, and beyond.
               </p>
             </div>
           </div>
@@ -88,7 +88,7 @@ export const AboutPage: React.FC = () => {
                   <span>Transparent Menus & Prices</span>
                 </div>
                 <p className="text-xs text-[#20231F]/75 leading-relaxed">
-                  Provide verified prices, portion options, and dish varieties so customers know exactly what to expect before ordering.
+                  Make prices, portions, and dish details easy to compare, with participating businesses responsible for keeping their information current.
                 </p>
               </div>
 
@@ -132,7 +132,7 @@ export const AboutPage: React.FC = () => {
               wá jẹun does not manufacture fake customer counts, dummy reviews, or fabricated order activity. We are in active pre-launch development, testing the system and gathering direct input from local residents and kitchen operators.
             </p>
             <p>
-              When a food business is listed on wá jẹun, it means we have actually communicated with the owner, verified their dishes, and confirmed their pickup or delivery terms.
+              We are preparing the first business listings through onboarding. A listing should not be taken as proof that every dish, price, or delivery arrangement has been independently verified; when ordering opens, customers should check the business details shown on its page.
             </p>
           </div>
         </div>

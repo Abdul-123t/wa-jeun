@@ -1,6 +1,8 @@
 import { normalizeNigerianPhone } from './validation';
+import { createHash } from 'node:crypto';
+import { canonicalOrderIntent } from '../utils/orderIntent';
 
-export type CheckoutLine = { menuItemId: string; quantity: number };
+export type CheckoutLine = { menuItemId: string; quantity: number; expectedPriceNgn?: number };
 export type FulfillmentMethod = 'pickup' | 'vendor_delivery';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -13,8 +15,9 @@ export function parseCheckoutLines(value: unknown): { success: true; lines: Chec
     const line = raw as Record<string, unknown>;
     if (typeof line.menuItemId !== 'string' || !UUID.test(line.menuItemId) || seen.has(line.menuItemId)) return { success: false, error: 'Your cart contains an invalid or duplicate item.' };
     if (!Number.isInteger(line.quantity) || Number(line.quantity) < 1 || Number(line.quantity) > 99) return { success: false, error: 'Each item quantity must be between 1 and 99.' };
+    if (typeof line.expectedPriceNgn !== 'number' || !Number.isFinite(line.expectedPriceNgn) || line.expectedPriceNgn <= 0 || line.expectedPriceNgn > 10000000 || Math.round(line.expectedPriceNgn * 100) !== line.expectedPriceNgn * 100) return { success: false, error: 'Refresh the menu and review the current item prices.' };
     seen.add(line.menuItemId);
-    lines.push({ menuItemId: line.menuItemId, quantity: Number(line.quantity) });
+    lines.push({ menuItemId: line.menuItemId, quantity: Number(line.quantity), expectedPriceNgn: Number(line.expectedPriceNgn) });
   }
   return { success: true, lines };
 }
@@ -31,11 +34,31 @@ export function validateFulfillment(value: unknown, address: unknown, allowed: s
   if (value !== 'pickup' && value !== 'vendor_delivery') return { success: false as const, error: 'Choose pickup or vendor-managed delivery.' };
   const options = allowed;
   if (value === 'pickup' && !options.includes('pickup_only') && !options.includes('pickup_and_delivery')) return { success: false as const, error: 'This business does not offer pickup.' };
-  if (value === 'vendor_delivery' && !options.includes('vendor_delivery') && !options.includes('pickup_and_delivery') && !options.includes('delivery_varies')) return { success: false as const, error: 'This business does not offer vendor-managed delivery.' };
+  if (value === 'vendor_delivery' && !options.includes('vendor_delivery') && !options.includes('pickup_and_delivery')) return { success: false as const, error: 'This business does not offer configured vendor-managed delivery.' };
   if (value === 'pickup') return { success: true as const, fulfillmentMethod: value, deliveryAddress: null };
   const deliveryAddress = typeof address === 'string' ? address.trim().replace(/\s+/g, ' ') : '';
   if (deliveryAddress.length < 3 || deliveryAddress.length > 300) return { success: false as const, error: 'Enter a delivery address or clear landmark between 3 and 300 characters.' };
   return { success: true as const, fulfillmentMethod: value, deliveryAddress };
+}
+
+export function createOrderRequestFingerprint(input: {
+  customerUserId: string;
+  customerName: string;
+  customerPhone: string;
+  fulfillmentMethod: FulfillmentMethod;
+  deliveryAddress: string | null;
+  expectedDeliveryFeeNgn: number | null;
+  lines: Array<CheckoutLine & { expectedPriceNgn: number }>;
+}): string {
+  return createHash('sha256').update(canonicalOrderIntent({
+    customerId: input.customerUserId,
+    customerName: input.customerName,
+    customerPhone: input.customerPhone,
+    fulfillmentMethod: input.fulfillmentMethod,
+    deliveryAddress: input.deliveryAddress,
+    expectedDeliveryFeeNgn: input.expectedDeliveryFeeNgn,
+    items: input.lines.map(line => ({ menuItemId: line.menuItemId, quantity: line.quantity, expectedPriceNgn: line.expectedPriceNgn }))
+  })).digest('hex');
 }
 
 export function calculateOrderTotals(items: Array<{ price_ngn: number; quantity: number }>, deliveryFeeNgn: number | null) {

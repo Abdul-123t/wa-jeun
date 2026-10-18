@@ -47,7 +47,7 @@ export const HomePage: React.FC = () => {
     {
       category: 'diners',
       q: "Can I order food right now?",
-      a: "No, live ordering is not yet active. We believe in complete operational transparency: no customer orders will be processed until participating food vendors in Ijebu Ode have completed onboarding, set up their verified menus, and tested their fulfillment workflows."
+      a: "No, live ordering is not yet active. We will open ordering after participating food businesses have completed onboarding and their menus and pickup or delivery arrangements are ready."
     },
     {
       category: 'vendors',
@@ -110,12 +110,12 @@ export const HomePage: React.FC = () => {
 
               {/* Main Heading */}
               <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#123B2A] tracking-tight leading-[1.1] text-balance">
-                Your next favorite meal starts here.
+                Built in Ijebu. Made for Ijebu.
               </h1>
 
               {/* Supporting Copy */}
               <p className="text-base sm:text-lg text-[#20231F]/80 max-w-xl leading-relaxed">
-                Discover the food around you. wá jẹun is bringing Ijebu Ode's food businesses closer to the people who love their meals.
+                <span className="font-semibold text-[#123B2A]">Your City. Your Food.</span> We're starting in Ijebu Ode, connecting residents with the independent food businesses and Nigerian meals that make our city special, with room to grow across Ogun State and beyond.
               </p>
 
               {/* Dual-Audience Action Pathways */}
@@ -140,17 +140,17 @@ export const HomePage: React.FC = () => {
               <div className="pt-4 flex flex-wrap items-center gap-y-2 gap-x-4 text-xs text-[#20231F]/75">
                 <span className="flex items-center gap-1.5 font-medium">
                   <CheckCircle2 className="w-4 h-4 text-[#123B2A]" />
-                  Authentic Buka & Restaurant Menus
+                  Rooted in Ijebu's food culture
                 </span>
                 <span aria-hidden="true" className="text-slate-300">·</span>
                 <span className="flex items-center gap-1.5 font-medium">
                   <CheckCircle2 className="w-4 h-4 text-[#123B2A]" />
-                  Pickup & Vendor Delivery
+                  Pickup & Vendor Delivery Planned
                 </span>
                 <span aria-hidden="true" className="text-slate-300">·</span>
                 <span className="flex items-center gap-1.5 font-medium">
                   <CheckCircle2 className="w-4 h-4 text-[#123B2A]" />
-                  Zero Spam Guarantee
+                  Independent food businesses welcome
                 </span>
               </div>
 
@@ -169,7 +169,7 @@ export const HomePage: React.FC = () => {
                 <div className="p-4 bg-white/95 backdrop-blur-sm border-t border-slate-100 flex items-center justify-between">
                   <div>
                     <p className="text-xs font-bold text-[#123B2A]">
-                      Authentic Local Flavors
+                      Ijebu food, made close to home
                     </p>
                     <p className="text-[11px] text-[#20231F]/70">
                       From local bukas to everyday grills in Ijebu Ode
@@ -456,7 +456,7 @@ export const HomePage: React.FC = () => {
                   Discover local spots
                 </h3>
                 <p className="text-xs text-[#20231F]/80 leading-relaxed">
-                  Browse verified restaurants, bukas, and caterers across neighborhoods like Molipa, Igbeba, and Folagbade.
+                  Discover food businesses in Ijebu Ode neighborhoods such as Molipa, Igbeba, and Folagbade as they join the platform.
                 </p>
               </div>
 
@@ -565,7 +565,7 @@ export const HomePage: React.FC = () => {
           <div className="p-4 rounded-xl bg-[#123B2A]/5 border border-[#123B2A]/10 max-w-3xl mx-auto flex items-start gap-3">
             <ShieldCheck className="w-5 h-5 text-[#123B2A] shrink-0 mt-0.5" />
             <p className="text-xs text-[#20231F]/80 leading-relaxed">
-              <strong>Fulfillment Clarification:</strong> wá jẹun does not operate motorbikes or employ dispatch riders. All deliveries are coordinated directly by participating restaurants, ensuring you deal directly with established local businesses.
+              <strong>Fulfillment Clarification:</strong> wá jẹun does not operate motorbikes or employ dispatch riders. Participating food businesses coordinate their own delivery arrangements directly with customers.
             </p>
           </div>
 
@@ -598,7 +598,7 @@ export const HomePage: React.FC = () => {
                 </div>
                 <div className="flex items-start gap-2.5">
                   <CheckCircle2 className="w-5 h-5 text-[#B8D94B] shrink-0 mt-0.5" />
-                  <span>Receive customer orders for pickup or your own delivery</span>
+                  <span>Be ready to reach customers when ordering opens in Ijebu Ode</span>
                 </div>
                 <div className="flex items-start gap-2.5">
                   <CheckCircle2 className="w-5 h-5 text-[#B8D94B] shrink-0 mt-0.5" />

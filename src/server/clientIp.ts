@@ -1,4 +1,5 @@
 import { isIP } from 'node:net';
+import { isProductionRuntime } from './runtimeMode';
 
 type ExpressSettings = { set: (name: string, value: unknown) => unknown };
 
@@ -24,7 +25,7 @@ function isIpOrCidr(value: string): boolean {
  * which proxy CIDRs it trusts. No request header can alter this policy.
  */
 export function configureClientIpTrust(app: ExpressSettings, env: NodeJS.ProcessEnv = process.env): void {
-  if (env.NODE_ENV !== 'production') {
+  if (!isProductionRuntime(env)) {
     app.set('trust proxy', false);
     return;
   }

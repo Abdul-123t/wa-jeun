@@ -35,8 +35,9 @@ export const Footer: React.FC<FooterProps> = ({ onOpenShare }) => {
         <Link to="/" aria-label="wá jẹun home" className="inline-flex rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B8D94B] focus-visible:ring-offset-4 focus-visible:ring-offset-[#123B2A]">
           <img src="/brand/wa-jeun-logo.webp" alt="" aria-hidden="true" className="h-28 w-auto rounded-md object-contain" />
         </Link>
-        <p className="mt-1 text-sm font-semibold text-[#B8D94B]">Your City. Your Food.</p>
-        <p className="mt-4 max-w-sm text-sm leading-6 text-[#FFF8E9]/75">A local food marketplace bringing Ijebu Ode’s cooks, kitchens, and authentic flavours closer to the people who love them.</p>
+        <p className="mt-1 text-sm font-semibold text-[#B8D94B]">Built in Ijebu. Made for Ijebu.</p>
+        <p className="mt-3 text-sm font-semibold text-[#FFF8E9]">Your City. Your Food.</p>
+        <p className="mt-2 max-w-sm text-sm leading-6 text-[#FFF8E9]/75">Rooted in Ijebu Ode, wá jẹun is making it easier to discover the independent food businesses that make our city special. Ijebu Ode is where we start, with room to grow.</p>
         <p className="mt-4 flex items-center gap-2 text-sm text-[#FFF8E9]/75"><MapPin className="h-4 w-4 shrink-0 text-[#B8D94B]" aria-hidden="true" />Ijebu Ode, Ogun State, Nigeria</p>
         {onOpenShare && <button type="button" onClick={onOpenShare} className="footer-action mt-3 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B8D94B] focus-visible:ring-offset-4 focus-visible:ring-offset-[#123B2A]">
           <Share2 className="h-4 w-4" aria-hidden="true" />Share wá jẹun

@@ -60,7 +60,7 @@ function RouteMetadata() {
 
     if (location.pathname === '/explore') {
       title = 'Explore Local Food | wá jẹun';
-      description = 'Explore verified local food businesses and authentic Nigerian menus in Ijebu Ode with wá jẹun.';
+      description = 'Discover Ijebu Ode food businesses and Nigerian menus with wá jẹun, built in Ijebu for the local community.';
     } else if (location.pathname === '/customer-register') {
       title = 'Join the Customer Launch List | wá jẹun';
       description = 'Join the wá jẹun customer launch list for updates on local food discovery and ordering in Ijebu Ode.';
