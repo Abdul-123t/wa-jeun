@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { api, type CustomerOrder, type VendorBusiness, type VendorMenuInput, type VendorMenuItem } from '../services/api';
 import { MARKET_AREAS } from '../data/marketAreas';
+import { validateVendorOrderReadiness, validateVendorProfileReadiness } from '../server/vendorRules';
 
 const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const categories = ['rice', 'swallow', 'soup', 'grills', 'fast_food', 'snacks', 'drinks', 'other'];
@@ -42,12 +43,24 @@ export const VendorDashboardPage: React.FC = () => {
 
   const business = businesses.find(item => item.id === selectedId) || businesses[0];
   const approved = business?.status === 'approved';
-  const setupComplete = Boolean(description.trim().length >= 20 && business?.opening_hours && business.menu.some(item => item.available));
+  const setupComplete = Boolean(business && !validateVendorOrderReadiness({
+    business_name: businessName, contact_name: contactName, phone, market_area: marketArea,
+    neighborhood, street_address: streetAddress, nearby_landmark: nearbyLandmark,
+    delivery_coverage: deliveryCoverage, business_type: businessType,
+    fulfillment_options: fulfillmentOptions, delivery_fee_ngn: deliveryFee.trim() ? Number(deliveryFee) : null,
+    description, opening_hours: hours
+  }, business.menu.filter(item => item.available).length));
   const steps = useMemo(() => [
-    { label: 'Business profile and hours', done: Boolean(description.trim().length >= 20 && business?.opening_hours) },
+    { label: 'Business profile and hours', done: Boolean(business && !validateVendorProfileReadiness({
+      business_name: businessName, contact_name: contactName, phone, market_area: marketArea,
+      neighborhood, street_address: streetAddress, nearby_landmark: nearbyLandmark,
+      delivery_coverage: deliveryCoverage, business_type: businessType,
+      fulfillment_options: fulfillmentOptions, delivery_fee_ngn: deliveryFee.trim() ? Number(deliveryFee) : null,
+      description, opening_hours: hours
+    })) },
     { label: 'At least one available menu item', done: Boolean(business?.menu.some(item => item.available)) },
     { label: 'Application approved', done: approved }
-  ], [description, business, approved]);
+  ], [description, business, approved, businessName, businessType, contactName, phone, marketArea, neighborhood, streetAddress, nearbyLandmark, deliveryCoverage, fulfillmentOptions, deliveryFee, hours]);
 
   const refresh = async () => {
     if (!token) return;
@@ -112,6 +125,7 @@ export const VendorDashboardPage: React.FC = () => {
     const selected = businesses.find(entry => entry.id === id);
     if (!selected) return;
     setSelectedId(selected.id); setDescription(selected.description || ''); setBusinessName(selected.business_name); setBusinessType(selected.business_type); setContactName(selected.contact_name); setPhone(selected.phone); setEmail(selected.email || ''); setNeighborhood(selected.neighborhood || '');
+    setMarketArea(selected.market_area || 'ijebu-ode'); setStreetAddress(selected.street_address || ''); setNearbyLandmark(selected.nearby_landmark || ''); setDeliveryCoverage(selected.delivery_coverage || []);
     setHours(selected.opening_hours || emptyHours); setFulfillmentOptions(selected.fulfillment_options || 'pickup_only');
     setDeliveryFee(selected.delivery_fee_ngn === null ? '' : String(selected.delivery_fee_ngn));
     setEditingId(''); setItemDraft(emptyItem); setError(''); setNotice('');

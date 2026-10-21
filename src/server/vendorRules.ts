@@ -26,6 +26,42 @@ export function canManageMenu(status: string): boolean {
   return status === 'approved';
 }
 
+/** Return a customer-safe setup issue before an approved business opens ordering. */
+export type VendorOrderReadinessInput = {
+  business_name: string | null;
+  contact_name: string | null;
+  phone: string | null;
+  market_area: string | null;
+  neighborhood: string | null;
+  street_address: string | null;
+  nearby_landmark: string | null;
+  delivery_coverage: string[] | null;
+  business_type: string | null;
+  fulfillment_options: string | null;
+  delivery_fee_ngn: number | string | null;
+  description: string | null;
+  opening_hours: OpeningHours | null;
+};
+
+export function validateVendorProfileReadiness(input: VendorOrderReadinessInput): string | null {
+  if (!input.business_name?.trim() || input.business_name.trim().length < 2 || !input.contact_name?.trim() || input.contact_name.trim().length < 2 || !input.phone?.trim()) return 'Complete your business name and contact details before accepting orders.';
+  if (!['ijebu-ode', 'ijagun'].includes(input.market_area || '') || !input.neighborhood?.trim() || input.neighborhood.trim().length < 2 || !input.street_address?.trim() || input.street_address.trim().length < 3 || !input.nearby_landmark?.trim() || input.nearby_landmark.trim().length < 2 || !BUSINESS_TYPES.includes(input.business_type as typeof BUSINESS_TYPES[number])) return 'Complete your business location and category before accepting orders.';
+  if (!input.description?.trim() || input.description.trim().length < 20 || !validateOpeningHours(input.opening_hours)) return 'Complete your storefront description and opening hours before accepting orders.';
+  if (!FULFILLMENT_OPTIONS.includes(input.fulfillment_options as typeof FULFILLMENT_OPTIONS[number]) || input.fulfillment_options === 'delivery_varies') return 'Choose pickup or a supported fixed delivery option before accepting orders.';
+  if (['vendor_delivery', 'pickup_and_delivery'].includes(input.fulfillment_options || '')) {
+    const fee = input.delivery_fee_ngn === null ? null : Number(input.delivery_fee_ngn);
+    if (!Array.isArray(input.delivery_coverage) || input.delivery_coverage.length === 0 || input.delivery_coverage.some(area => !['ijebu-ode', 'ijagun'].includes(area)) || fee === null || !Number.isFinite(fee) || fee < 0) return 'Set your actual delivery coverage and a fixed delivery fee before accepting orders.';
+  }
+  return null;
+}
+
+export function validateVendorOrderReadiness(input: VendorOrderReadinessInput, availableMenuItems: number): string | null {
+  const profileIssue = validateVendorProfileReadiness(input);
+  if (profileIssue) return profileIssue;
+  if (!Number.isInteger(availableMenuItems) || availableMenuItems < 1) return 'Add at least one available menu item before accepting orders.';
+  return null;
+}
+
 export function validateMenuItem(input: Record<string, unknown>): string | null {
   if (typeof input.name !== 'string' || input.name.trim().length < 2 || input.name.trim().length > 120) return 'Item name must be 2 to 120 characters.';
   if (typeof input.description !== 'string' || input.description.trim().length > 1000) return 'Item description must be 1,000 characters or fewer.';

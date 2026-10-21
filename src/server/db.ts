@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import { redactPii } from './validation';
 import { verifyAccessToken } from './authTokens';
 import { randomUUID } from 'crypto';
-import { isVendorSellEligible, isVendorOwner, canManageMenu, isTrustedMenuImageUrl, type OpeningHours } from './vendorRules';
+import { isVendorSellEligible, isVendorOwner, canManageMenu, isTrustedMenuImageUrl, validateVendorOrderReadiness, type OpeningHours } from './vendorRules';
 import { resolveAvailableOrderItems, type CheckoutLine, type FulfillmentMethod } from './orderRules';
 import { getPublicStoreAvailability } from '../services/storeHours';
 import { isProductionRuntime } from './runtimeMode';
@@ -774,6 +774,75 @@ export async function createCustomerOrder(input: {
   }
 }
 
+export type FlutterwaveTestPaymentPreparation = {
+  txRef: string; amountNgn: number; currency: string; status: string; checkoutUrl: string | null; created: boolean;
+};
+
+export async function prepareFlutterwaveTestPayment(orderId: string, customerUserId: string, txRef: string, customerEmail: string) {
+  if (!supabaseClient) return { success: false as const, statusCode: 503, error: 'Sandbox payment storage is unavailable. Apply the reviewed test-payment migration first.' };
+  try {
+    const { data, error } = await supabaseClient.rpc('prepare_flutterwave_test_payment', {
+      p_order_id: orderId, p_customer_user_id: customerUserId, p_tx_ref: txRef, p_customer_email: customerEmail
+    });
+    if (error) return { success: false as const, statusCode: error.code === 'P0002' ? 404 : error.code === '22023' ? 409 : 503, error: 'Sandbox payment could not be prepared.' };
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row?.tx_ref || !row?.status || !Number.isFinite(Number(row.amount_ngn))) return { success: false as const, statusCode: 503, error: 'Sandbox payment state could not be confirmed.' };
+    return { success: true as const, data: {
+      txRef: row.tx_ref, amountNgn: Number(row.amount_ngn), currency: row.currency,
+      status: row.status, checkoutUrl: row.checkout_url || null, created: row.created === true
+    } satisfies FlutterwaveTestPaymentPreparation };
+  } catch {
+    return { success: false as const, statusCode: 503, error: 'Sandbox payment storage is temporarily unavailable.' };
+  }
+}
+
+export async function saveFlutterwaveTestCheckoutUrl(txRef: string, checkoutUrl: string) {
+  if (!supabaseClient) return { success: false as const, statusCode: 503, error: 'Sandbox payment storage is unavailable.' };
+  try {
+    const { data, error } = await supabaseClient.rpc('save_flutterwave_test_checkout_url', { p_tx_ref: txRef, p_checkout_url: checkoutUrl });
+    if (error || data !== true) return { success: false as const, statusCode: 503, error: 'Sandbox checkout link could not be saved.' };
+    return { success: true as const };
+  } catch { return { success: false as const, statusCode: 503, error: 'Sandbox checkout link could not be saved.' }; }
+}
+
+export async function failFlutterwaveTestPaymentInitialization(txRef: string) {
+  if (!supabaseClient) return;
+  try { await supabaseClient.rpc('fail_flutterwave_test_payment_initialization', { p_tx_ref: txRef }); } catch { /* The pending row remains unpaid and cannot advance vendor fulfillment. */ }
+}
+
+export async function getFlutterwaveTestPayment(txRef: string) {
+  if (!supabaseClient) return { success: false as const, statusCode: 503, error: 'Sandbox payment storage is unavailable.' };
+  try {
+    const { data, error } = await supabaseClient.from('flutterwave_test_payments')
+      .select('tx_ref, order_id, amount_ngn, currency, status, transaction_id')
+      .eq('tx_ref', txRef).maybeSingle();
+    if (error) return { success: false as const, statusCode: 503, error: 'Sandbox payment state could not be loaded.' };
+    if (!data) return { success: false as const, statusCode: 404, error: 'Sandbox payment reference was not found.' };
+    const { data: order, error: orderError } = await supabaseClient.from('customer_orders').select('order_reference').eq('id', data.order_id).maybeSingle();
+    if (orderError || !order) return { success: false as const, statusCode: 503, error: 'Sandbox order reference could not be loaded.' };
+    return { success: true as const, data: {
+      txRef: data.tx_ref, orderId: data.order_id, amountNgn: Number(data.amount_ngn),
+      currency: data.currency, status: data.status, transactionId: data.transaction_id as string | null,
+      orderReference: order.order_reference as string
+    } };
+  } catch { return { success: false as const, statusCode: 503, error: 'Sandbox payment state could not be loaded.' }; }
+}
+
+export async function completeFlutterwaveTestPayment(input: {
+  txRef: string; transactionId: string; status: 'successful' | 'failed' | 'cancelled'; amountNgn: number; currency: string;
+}) {
+  if (!supabaseClient) return { success: false as const, statusCode: 503, error: 'Sandbox payment storage is unavailable.' };
+  try {
+    const { data, error } = await supabaseClient.rpc('complete_flutterwave_test_payment', {
+      p_tx_ref: input.txRef, p_transaction_id: input.transactionId, p_verified_status: input.status,
+      p_amount_ngn: input.amountNgn, p_currency: input.currency
+    });
+    if (error) return { success: false as const, statusCode: 503, error: 'Sandbox payment result could not be saved.' };
+    const row = Array.isArray(data) ? data[0] : data;
+    return { success: true as const, data: { processed: row?.processed === true, status: String(row?.status || 'invalid'), orderId: row?.order_id as string | null } };
+  } catch { return { success: false as const, statusCode: 503, error: 'Sandbox payment result could not be saved.' }; }
+}
+
 export async function getCustomerOrderAttempt(customerUserId: string, idempotencyKey: string) {
   if (!supabaseClient) return { success: false as const, statusCode: 503, error: 'Order status could not be confirmed.' };
   try {
@@ -852,8 +921,8 @@ export async function transitionVendorOrder(userId: string, orderId: string, nex
       if (order.is_test_order) return { success: false as const, statusCode: 409, error: 'Development test orders cannot be managed in production.' };
     }
     const { data, error } = await supabaseClient.rpc('transition_vendor_order', { p_vendor_user_id: userId, p_order_id: orderId, p_next_status: nextStatus });
-    if (error) return { success: false as const, statusCode: error.code === 'P0002' ? 404 : error.code === '22023' ? 409 : 503,
-      error: error.code === 'P0002' ? 'Order not found for this vendor account.' : error.code === '22023' ? 'That order status change is not allowed.' : 'Order status could not be updated.' };
+    if (error) return { success: false as const, statusCode: error.code === 'P0002' ? 404 : ['22023', 'PZ003'].includes(error.code || '') ? 409 : 503,
+      error: error.code === 'P0002' ? 'Order not found for this vendor account.' : error.code === 'PZ003' ? 'Payment must be confirmed before this order can be managed.' : error.code === '22023' ? 'That order status change is not allowed.' : 'Order status could not be updated.' };
     return { success: true as const, data: Array.isArray(data) ? data[0] : data };
   } catch { return { success: false as const, statusCode: 503, error: 'Order status could not be updated.' }; }
 }
@@ -916,10 +985,15 @@ export async function setVendorAvailability(userId: string, businessId: string, 
   if (!owner.data) return { success: false as const, ...owner };
   if (!canManageMenu(owner.data.status)) return { success: false as const, statusCode: 403, error: 'Only approved businesses may change order availability.' };
   if (accepting) {
-    const { data: vendor } = await supabaseClient!.from('vendor_interest').select('description, opening_hours, fulfillment_options, delivery_fee_ngn').eq('id', businessId).single();
-    const { count } = await supabaseClient!.from('vendor_menu_items').select('id', { count: 'exact', head: true }).eq('vendor_interest_id', businessId).eq('available', true);
-    if (!vendor?.description?.trim() || !vendor?.opening_hours || !count) return { success: false as const, statusCode: 400, error: 'Complete your storefront and add an available menu item before accepting orders.' };
-    if (vendor.fulfillment_options === 'delivery_varies' || (vendor.fulfillment_options === 'vendor_delivery' && (vendor.delivery_fee_ngn === null || !Number.isFinite(Number(vendor.delivery_fee_ngn))))) return { success: false as const, statusCode: 400, error: 'Configure a fixed delivery fee and supported fulfillment option before accepting orders.' };
+    const { data: vendor, error: vendorError } = await supabaseClient!.from('vendor_interest')
+      .select('business_name, contact_name, phone, market_area, neighborhood, street_address, nearby_landmark, delivery_coverage, business_type, fulfillment_options, delivery_fee_ngn, description, opening_hours')
+      .eq('id', businessId).eq('user_id', userId).maybeSingle();
+    if (vendorError) return { success: false as const, statusCode: 503, error: 'Store readiness could not be verified.' };
+    if (!vendor) return { success: false as const, statusCode: 404, error: 'Vendor business not found.' };
+    const { count, error: menuError } = await supabaseClient!.from('vendor_menu_items').select('id', { count: 'exact', head: true }).eq('vendor_interest_id', businessId).eq('available', true);
+    if (menuError) return { success: false as const, statusCode: 503, error: 'Menu readiness could not be verified.' };
+    const readinessIssue = validateVendorOrderReadiness(vendor, count || 0);
+    if (readinessIssue) return { success: false as const, statusCode: 400, error: readinessIssue };
   }
   const { data, error } = await supabaseClient!.from('vendor_interest').update({ accepting_orders: accepting, updated_at: new Date().toISOString() }).eq('id', businessId).eq('user_id', userId).select('accepting_orders').single();
   return error ? { success: false as const, statusCode: 503, error: 'Store availability could not be saved.' } : { success: true as const, data };
