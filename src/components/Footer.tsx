@@ -16,7 +16,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenShare }) => {
         <div className="max-w-[34rem] lg:col-start-1 lg:row-start-1">
           <p className="mb-3 font-display text-[11px] font-bold uppercase tracking-[.2em] text-[#B8D94B] sm:text-xs">A little taste of Ijebu</p>
           <h2 id="footer-editorial-title" className="font-display text-[2.3rem] font-semibold leading-[1.04] tracking-[-.04em] text-[#FFF8E9] min-[360px]:text-[2.55rem] sm:text-5xl lg:text-[3.4rem]">
-            Good food. Good people. <span className="text-[#B8D94B]">Good Ijebu.</span>
+            Good food, <span className="text-[#B8D94B]">close to home.</span>
           </h2>
         </div>
 
@@ -25,7 +25,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenShare }) => {
         </div>
 
         <p className="max-w-[36rem] text-sm leading-7 text-[#FFF8E9]/80 sm:text-base sm:leading-8 lg:col-start-1 lg:row-start-2">
-          From the beloved bukas of Ijebu Ode to the sizzling grills and kitchens around town, we’re celebrating the local cooks, authentic flavours, and shared moments that make our city feel like home. Every meal tells a story, and every local kitchen has one worth discovering.
+          Discover independent food businesses in Ijebu Ode as they join wá jẹun.
         </p>
       </div>
     </section>
@@ -35,9 +35,8 @@ export const Footer: React.FC<FooterProps> = ({ onOpenShare }) => {
         <Link to="/" aria-label="wá jẹun home" className="inline-flex rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B8D94B] focus-visible:ring-offset-4 focus-visible:ring-offset-[#123B2A]">
           <img src="/brand/wa-jeun-logo.webp" alt="" aria-hidden="true" className="h-28 w-auto rounded-md object-contain" />
         </Link>
-        <p className="mt-1 text-sm font-semibold text-[#B8D94B]">Built in Ijebu. Made for Ijebu.</p>
-        <p className="mt-3 text-sm font-semibold text-[#FFF8E9]">Your City. Your Food.</p>
-        <p className="mt-2 max-w-sm text-sm leading-6 text-[#FFF8E9]/75">Rooted in Ijebu Ode, wá jẹun is making it easier to discover the independent food businesses that make our city special. Ijebu Ode is where we start, with room to grow.</p>
+        <p className="mt-3 text-sm font-semibold text-[#B8D94B]">Built in Ijebu. Made for Ijebu.</p>
+        <p className="mt-2 max-w-sm text-sm leading-6 text-[#FFF8E9]/75">Your City. Your Food. Starting in Ijebu Ode.</p>
         <p className="mt-4 flex items-center gap-2 text-sm text-[#FFF8E9]/75"><MapPin className="h-4 w-4 shrink-0 text-[#B8D94B]" aria-hidden="true" />Ijebu Ode, Ogun State, Nigeria</p>
         {onOpenShare && <button type="button" onClick={onOpenShare} className="footer-action mt-3 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B8D94B] focus-visible:ring-offset-4 focus-visible:ring-offset-[#123B2A]">
           <Share2 className="h-4 w-4" aria-hidden="true" />Share wá jẹun

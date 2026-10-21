@@ -9,6 +9,7 @@ import { isVendorSellEligible, isVendorOwner, canManageMenu, isTrustedMenuImageU
 import { resolveAvailableOrderItems, type CheckoutLine, type FulfillmentMethod } from './orderRules';
 import { getPublicStoreAvailability } from '../services/storeHours';
 import { isProductionRuntime } from './runtimeMode';
+import { MARKET_AREAS, isMarketAreaId } from '../data/marketAreas';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -139,6 +140,7 @@ export async function insertCustomerInterest(record: {
   phone?: string | null;
   email?: string | null;
   neighborhood: string;
+  market_area?: string;
   favorite_categories: string[];
   consent_accepted: boolean;
 }): Promise<DbResult<{ id: string }>> {
@@ -166,6 +168,7 @@ export async function insertCustomerInterest(record: {
           phone: record.phone || null,
           email: record.email || null,
           neighborhood: record.neighborhood,
+          market_area: record.market_area || 'ijebu-ode',
           favorite_categories: record.favorite_categories,
           consent_accepted: record.consent_accepted
         })
@@ -256,6 +259,10 @@ export async function insertVendorInterest(record: {
   phone: string;
   email?: string | null;
   neighborhood: string;
+  market_area?: string;
+  street_address?: string;
+  nearby_landmark?: string;
+  delivery_coverage?: string[];
   business_type: string;
   current_ordering_methods: string[];
   fulfillment_options: string;
@@ -281,6 +288,10 @@ export async function insertVendorInterest(record: {
         phone: record.phone,
         email: record.email || null,
         neighborhood: record.neighborhood,
+        market_area: record.market_area || 'ijebu-ode',
+        street_address: record.street_address || null,
+        nearby_landmark: record.nearby_landmark || null,
+        delivery_coverage: record.delivery_coverage || [],
         business_type: record.business_type,
         current_ordering_methods: record.current_ordering_methods,
         fulfillment_options: record.fulfillment_options,
@@ -447,7 +458,11 @@ export async function insertContactInquiry(record: {
 export type PublicVendor = {
   id: string;
   business_name: string;
+  market_area: string;
   neighborhood: string;
+  street_address: string | null;
+  nearby_landmark: string | null;
+  delivery_coverage: string[];
   business_type: string;
   fulfillment_options: string;
   delivery_fee_ngn: number | null;
@@ -473,7 +488,7 @@ export async function getVendorApplicationsForUser(userId: string): Promise<DbRe
   try {
     const { data, error } = await supabaseClient
       .from('vendor_interest')
-      .select('id, business_name, neighborhood, business_type, status, created_at')
+      .select('id, business_name, market_area, street_address, nearby_landmark, delivery_coverage, neighborhood, business_type, status, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
@@ -513,7 +528,11 @@ export async function getVendorApplicationsForUser(userId: string): Promise<DbRe
 export type AdminVendorSummary = {
   id: string;
   business_name: string;
+  market_area: string;
   neighborhood: string;
+  street_address: string | null;
+  nearby_landmark: string | null;
+  delivery_coverage: string[];
   business_type: string;
   status: string;
   created_at: string;
@@ -525,6 +544,7 @@ export type AdminVendorDetails = AdminVendorSummary & {
   email: string | null;
   current_ordering_methods: string[];
   fulfillment_options: string;
+  delivery_fee_ngn: number | null;
   message: string | null;
   consent_accepted: boolean;
 };
@@ -562,7 +582,7 @@ export async function getAdminVendorApplications(): Promise<DbResult<AdminVendor
   try {
     const { data, error } = await supabaseClient
       .from('vendor_interest')
-      .select('id, business_name, neighborhood, business_type, status, created_at')
+      .select('id, business_name, market_area, street_address, nearby_landmark, delivery_coverage, neighborhood, business_type, status, created_at')
       .order('created_at', { ascending: false });
     if (error) {
       console.error('[WA JEUN DB] Admin vendor list query failed.', { code: error.code || 'unknown' });
@@ -582,7 +602,7 @@ export async function getAdminVendorApplication(applicationId: string): Promise<
   try {
     const [applicationResult, historyResult] = await Promise.all([
       supabaseClient.from('vendor_interest')
-        .select('id, business_name, contact_name, phone, email, neighborhood, business_type, current_ordering_methods, fulfillment_options, message, consent_accepted, status, created_at')
+        .select('id, business_name, contact_name, phone, email, market_area, street_address, nearby_landmark, delivery_coverage, neighborhood, business_type, current_ordering_methods, fulfillment_options, delivery_fee_ngn, message, consent_accepted, status, created_at')
         .eq('id', applicationId)
         .maybeSingle(),
       supabaseClient.from('vendor_review_audit')
@@ -638,15 +658,22 @@ export async function reviewVendorApplication(
   }
 }
 
-export function toPublicVendor(record: Record<string, any>): Pick<PublicVendor, 'id' | 'business_name' | 'neighborhood' | 'business_type' | 'fulfillment_options' | 'delivery_fee_ngn'> {
+export function toPublicVendor(record: Record<string, any>): Pick<PublicVendor, 'id' | 'business_name' | 'market_area' | 'neighborhood' | 'street_address' | 'nearby_landmark' | 'delivery_coverage' | 'business_type' | 'fulfillment_options' | 'delivery_fee_ngn'> {
   const deliveryFee = record.delivery_fee_ngn === undefined || record.delivery_fee_ngn === null ? null : Number(record.delivery_fee_ngn);
   const hasDeliveryFee = deliveryFee !== null && Number.isFinite(deliveryFee) && deliveryFee >= 0;
   const configuredOptions = record.fulfillment_options;
-  const fulfillmentOptions = configuredOptions === 'pickup_and_delivery' && !hasDeliveryFee ? 'pickup_only' : configuredOptions;
+  const claimedDeliveryCoverage = Array.isArray(record.delivery_coverage) ? record.delivery_coverage.filter(isMarketAreaId) : [];
+  const deliveryConfigured = hasDeliveryFee && claimedDeliveryCoverage.length > 0;
+  const deliveryCoverage = deliveryConfigured ? claimedDeliveryCoverage : [];
+  const fulfillmentOptions = !deliveryConfigured && configuredOptions === 'pickup_and_delivery' ? 'pickup_only' : configuredOptions;
   return {
     id: record.id,
     business_name: record.business_name,
+    market_area: isMarketAreaId(record.market_area) ? record.market_area : 'ijebu-ode',
     neighborhood: record.neighborhood,
+    street_address: typeof record.street_address === 'string' && record.street_address.trim() ? record.street_address : null,
+    nearby_landmark: typeof record.nearby_landmark === 'string' && record.nearby_landmark.trim() ? record.nearby_landmark : null,
+    delivery_coverage: deliveryCoverage,
     business_type: record.business_type,
     fulfillment_options: fulfillmentOptions,
     delivery_fee_ngn: hasDeliveryFee ? deliveryFee : null
@@ -714,7 +741,7 @@ export async function createCustomerOrder(input: {
     const vendorId = resolvedItems.vendorId;
     if (input.lines.some(line => Math.round(Number(menu?.find(row => row.id === line.menuItemId)?.price_ngn) * 100) !== Math.round(Number(line.expectedPriceNgn) * 100))) return { success: false as const, statusCode: 409, error: 'A menu price changed. Review the updated prices before placing your order.' };
     const { data: vendor, error: vendorError } = await supabaseClient.from('vendor_interest')
-      .select('id, business_name, neighborhood, business_type, fulfillment_options, description, opening_hours, accepting_orders, status, delivery_fee_ngn')
+        .select('id, business_name, market_area, neighborhood, street_address, nearby_landmark, delivery_coverage, business_type, fulfillment_options, description, opening_hours, accepting_orders, status, delivery_fee_ngn')
       .eq('id', vendorId).maybeSingle();
     if (vendorError || !vendor) return { success: false as const, statusCode: 409, error: 'This food business is no longer available.' };
     if (!isVendorSellEligible({ status: vendor.status, business_name: vendor.business_name, neighborhood: vendor.neighborhood,
@@ -835,7 +862,7 @@ export async function getVendorDashboard(userId: string): Promise<DbResult<any[]
   if (!supabaseClient) return { success: false, statusCode: 503, error: 'Vendor dashboard is unavailable.' };
   try {
     const { data, error } = await supabaseClient.from('vendor_interest')
-      .select('id, business_name, contact_name, phone, email, neighborhood, business_type, fulfillment_options, delivery_fee_ngn, status, description, opening_hours, accepting_orders, created_at')
+      .select('id, business_name, contact_name, phone, email, market_area, neighborhood, street_address, nearby_landmark, delivery_coverage, business_type, fulfillment_options, delivery_fee_ngn, status, description, opening_hours, accepting_orders, created_at')
       .eq('user_id', userId).order('created_at', { ascending: false });
     if (error) throw error;
     const businesses = data || [];
@@ -876,9 +903,11 @@ export async function updateVendorProfile(userId: string, businessId: string, pr
     business_name: profile.businessName, business_type: profile.businessType,
     contact_name: profile.contactName, phone: profile.phone, email: profile.email,
     description: profile.description, neighborhood: profile.neighborhood,
+    market_area: profile.marketArea, street_address: profile.streetAddress,
+    nearby_landmark: profile.nearbyLandmark, delivery_coverage: profile.deliveryCoverage,
     opening_hours: profile.openingHours, fulfillment_options: profile.fulfillmentOptions, delivery_fee_ngn: profile.deliveryFeeNgn,
     updated_at: new Date().toISOString()
-  }).eq('id', businessId).eq('user_id', userId).select('id, business_name, contact_name, phone, email, neighborhood, business_type, fulfillment_options, delivery_fee_ngn, status, description, opening_hours, accepting_orders').single();
+  }).eq('id', businessId).eq('user_id', userId).select('id, business_name, contact_name, phone, email, market_area, neighborhood, street_address, nearby_landmark, delivery_coverage, business_type, fulfillment_options, delivery_fee_ngn, status, description, opening_hours, accepting_orders').single();
   return error ? { success: false as const, statusCode: 503, error: 'Business profile could not be saved.' } : { success: true as const, data };
 }
 
@@ -937,14 +966,14 @@ export async function uploadVendorMenuImage(userId: string, businessId: string, 
   return { success: true as const, data: { imageUrl: supabaseClient.storage.from('vendor-menu-images').getPublicUrl(path).data.publicUrl } };
 }
 
-export type PublicVendorFilters = { categories?: string[]; search?: string; neighborhood?: string; fulfillment?: 'pickup' | 'delivery' };
+export type PublicVendorFilters = { categories?: string[]; search?: string; marketArea?: string; neighborhood?: string; fulfillment?: 'pickup' | 'delivery' };
 export type PublicVendorListResult = { success: true; vendors: PublicVendor[]; total: number } | { success: false; statusCode: number; error: string };
 
 function isPublicFulfillmentConfigured(vendor: Record<string, any>): boolean {
   const fee = vendor.delivery_fee_ngn === null || vendor.delivery_fee_ngn === undefined ? null : Number(vendor.delivery_fee_ngn);
   const hasFee = fee !== null && Number.isFinite(fee) && fee >= 0;
   if (vendor.fulfillment_options === 'pickup_only' || vendor.fulfillment_options === 'pickup_and_delivery') return true;
-  return vendor.fulfillment_options === 'vendor_delivery' && hasFee;
+  return vendor.fulfillment_options === 'vendor_delivery' && hasFee && Array.isArray(vendor.delivery_coverage) && vendor.delivery_coverage.length > 0;
 }
 
 export function toPublicMenuItem(item: Record<string, any>) {
@@ -962,6 +991,11 @@ export function toPublicMenuItem(item: Record<string, any>) {
 }
 
 export function matchesPublicVendorFilters(vendor: PublicVendor, filters: PublicVendorFilters) {
+  if (filters.marketArea) {
+    if (filters.fulfillment === 'pickup' && vendor.market_area !== filters.marketArea) return false;
+    if (filters.fulfillment === 'delivery' && !vendor.delivery_coverage.includes(filters.marketArea)) return false;
+    if (filters.fulfillment !== 'pickup' && filters.fulfillment !== 'delivery' && vendor.market_area !== filters.marketArea && !vendor.delivery_coverage.includes(filters.marketArea)) return false;
+  }
   if (filters.neighborhood && vendor.neighborhood.toLocaleLowerCase() !== filters.neighborhood.toLocaleLowerCase()) return false;
   if (filters.fulfillment === 'pickup' && !['pickup_only', 'pickup_and_delivery'].includes(vendor.fulfillment_options)) return false;
   if (filters.fulfillment === 'delivery' && (!['vendor_delivery', 'pickup_and_delivery'].includes(vendor.fulfillment_options) || vendor.delivery_fee_ngn === null || !Number.isFinite(vendor.delivery_fee_ngn) || vendor.delivery_fee_ngn < 0)) return false;
@@ -970,7 +1004,10 @@ export function matchesPublicVendorFilters(vendor: PublicVendor, filters: Public
     const needle = filters.search.toLocaleLowerCase();
     const matchesName = vendor.business_name.toLocaleLowerCase().includes(needle);
     const matchesItem = vendor.menu.some(item => item.name.toLocaleLowerCase().includes(needle));
-    if (!matchesName && !matchesItem) return false;
+    const areaLabel = MARKET_AREAS.find(area => area.id === vendor.market_area)?.label || vendor.market_area;
+    const matchesLocation = [areaLabel, vendor.neighborhood, vendor.street_address || '', vendor.nearby_landmark || '']
+      .some(value => value.toLocaleLowerCase().includes(needle));
+    if (!matchesName && !matchesItem && !matchesLocation) return false;
   }
   return true;
 }
@@ -989,10 +1026,16 @@ export async function getVerifiedVendors(filters: PublicVendorFilters): Promise<
   if (supabaseClient) {
     try {
       const { data, error } = await supabaseClient.from('vendor_interest')
-        .select('id, business_name, neighborhood, business_type, fulfillment_options, delivery_fee_ngn, description, opening_hours, accepting_orders, status')
+        .select('id, business_name, market_area, neighborhood, street_address, nearby_landmark, delivery_coverage, business_type, fulfillment_options, delivery_fee_ngn, description, opening_hours, accepting_orders, status')
         .eq('status', 'approved').eq('accepting_orders', true);
       if (error) {
-        console.error('[WA JEUN DB] Public vendor query failed.', { code: error.code || 'unknown' });
+        // PostgREST errors identify schema/configuration faults (for example a
+        // missing column) without returning row data or credentials. Keep that
+        // safe diagnostic so a 503 can be traced to its actual cause.
+        console.error('[WA JEUN DB] Public vendor query failed.', {
+          code: error.code || 'unknown',
+          message: error.message || 'Database query failed.'
+        });
         return { success: false, statusCode: 503, error: 'The food directory is temporarily unavailable. Please try again.' };
       }
 
@@ -1068,7 +1111,7 @@ export async function getPublicVendorMenu(businessId: string): Promise<DbResult<
   }
   try {
     const { data: vendor, error } = await supabaseClient.from('vendor_interest')
-        .select('id, business_name, neighborhood, business_type, fulfillment_options, delivery_fee_ngn, description, opening_hours, accepting_orders, status')
+        .select('id, business_name, market_area, neighborhood, street_address, nearby_landmark, delivery_coverage, business_type, fulfillment_options, delivery_fee_ngn, description, opening_hours, accepting_orders, status')
       .eq('id', businessId).eq('status', 'approved').eq('accepting_orders', true).maybeSingle();
     if (error) return { success: false, statusCode: 503, error: 'This menu is temporarily unavailable. Please try again.' };
     if (!vendor) return { success: false, statusCode: 404, error: 'This food business is not currently available.' };

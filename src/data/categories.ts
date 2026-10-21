@@ -1,12 +1,13 @@
 import { FoodCategory } from '../types';
-import riceDishesImage from '../assets/images/category_rice_dishes_1792169660991.jpg';
-import swallowSoupsImage from '../assets/images/category_swallow_soups_1792169661810.jpg';
-import bukaMealsImage from '../assets/images/category_local_bukameals_1792169662615.jpg';
-import streetFoodImage from '../assets/images/category_street_food_1792174171995.jpg';
-import grillsImage from '../assets/images/category_grills_shawarma_1792169662635.jpg';
-import fastFoodImage from '../assets/images/category_fast_food_1792174171687.jpg';
-import snacksImage from '../assets/images/category_snacks_pastries_1792174173242.jpg';
-import drinksImage from '../assets/images/category_drinks_beverages_1792174172917.jpg';
+export { IJEBU_ODE_AREAS } from './ijebuAreas';
+import riceDishesImage from '../assets/images/category_rice_dishes_1792169660991-optimized.jpg';
+import swallowSoupsImage from '../assets/images/category_swallow_soups_1792169661810-optimized.jpg';
+import bukaMealsImage from '../assets/images/category_local_bukameals_1792169662615-optimized.jpg';
+import streetFoodImage from '../assets/images/category_street_food_1792174171995-optimized.jpg';
+import grillsImage from '../assets/images/category_grills_shawarma_1792169662635-optimized.jpg';
+import fastFoodImage from '../assets/images/category_fast_food_1792174171687-optimized.jpg';
+import snacksImage from '../assets/images/category_snacks_pastries_1792174173242-optimized.jpg';
+import drinksImage from '../assets/images/category_drinks_beverages_1792174172917-optimized.jpg';
 
 export const FOOD_CATEGORIES: FoodCategory[] = [
   {
@@ -65,21 +66,4 @@ export const FOOD_CATEGORIES: FoodCategory[] = [
     image: drinksImage,
     popularItems: ['Chilled Hibiscus Zobo', 'Creamy Fresh Kunu', 'Chilled Fruit Juices', 'Cold Bottled Malt']
   }
-];
-
-export const IJEBU_ODE_AREAS = [
-  'Igbeba',
-  'Molipa',
-  'Folagbade',
-  'Oke-Aje',
-  'Obalende',
-  'Bonojo',
-  'Imowo',
-  'Sabo',
-  'Erinlu',
-  'Degun',
-  'GRA (Government Reserved Area)',
-  'Ibadan Road',
-  'Lagos Garage / Expressway',
-  'Other Neighborhood in Ijebu Ode'
 ];

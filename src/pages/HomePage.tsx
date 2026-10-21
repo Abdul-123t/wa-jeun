@@ -1,816 +1,109 @@
-import heroImage from '../assets/images/hero_nigerian_jollof_feast_1792169660639.jpg';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { ArrowRight, Clock3, MapPin, Search, Store, UtensilsCrossed } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import {
-  ArrowRight,
-  MapPin,
-  Store,
-  ChevronDown,
-  CheckCircle2,
-  Utensils,
-  Search,
-  Compass,
-  Clock,
-  ShieldCheck,
-  ShoppingBag,
-  Sparkles,
-  Users,
-  ChefHat
-} from 'lucide-react';
+import heroImage from '../assets/images/hero_nigerian_jollof_feast_1792169660639-optimized.jpg';
 import { FOOD_CATEGORIES } from '../data/categories';
+import { FoodPhoto } from '../components/FoodPhoto';
+import { ScrollReveal } from '../components/ScrollReveal';
+import { api, type PublicVendorBusiness } from '../services/api';
+import { getPublicStoreAvailability } from '../services/storeHours';
+import { formatNaira } from '../utils/currency';
+import { MARKET_AREAS } from '../data/marketAreas';
+
+const marketAreaLabel = (value: string) => MARKET_AREAS.find(area => area.id === value)?.label || value;
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [howItWorksTab, setHowItWorksTab] = useState<'diners' | 'vendors'>('diners');
-  const [faqFilter, setFaqFilter] = useState<'all' | 'diners' | 'vendors' | 'delivery'>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [vendors, setVendors] = useState<PublicVendorBusiness[]>([]);
+  const [directoryState, setDirectoryState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [reloadCount, setReloadCount] = useState(0);
 
-  const toggleFaq = (index: number) => {
-    setOpenFaq(openFaq === index ? null : index);
+  useEffect(() => {
+    let active = true;
+    setDirectoryState('loading');
+    api.getVendors().then(response => {
+      if (!active) return;
+      setVendors(response.vendors);
+      setDirectoryState('ready');
+    }).catch(() => {
+      if (!active) return;
+      setVendors([]);
+      setDirectoryState('error');
+    });
+    return () => { active = false; };
+  }, [reloadCount]);
+
+  const submitSearch = (event: React.FormEvent) => {
+    event.preventDefault();
+    const search = searchTerm.trim();
+    navigate(search ? `/explore?search=${encodeURIComponent(search)}` : '/explore');
   };
 
-  const handleCategoryClick = (categoryId: string) => {
-    navigate(`/explore?category=${categoryId}`);
-  };
-
-  const allFaqs = [
-    {
-      category: 'general',
-      q: "What is wá jẹun?",
-      a: "wá jẹun is an independent food marketplace platform created to help food lovers discover local food businesses, view transparent menus and prices, and order food online, starting in Ijebu Ode, Ogun State, Nigeria."
-    },
-    {
-      category: 'general',
-      q: "Is wá jẹun available in Ijebu Ode yet?",
-      a: "We are currently in our pre-launch phase in Ijebu Ode. We are actively inviting local restaurants, bukas, caterers, and food creators to express interest in joining our initial onboarding group before public ordering opens."
-    },
-    {
-      category: 'diners',
-      q: "Can I order food right now?",
-      a: "No, live ordering is not yet active. We will open ordering after participating food businesses have completed onboarding and their menus and pickup or delivery arrangements are ready."
-    },
-    {
-      category: 'vendors',
-      q: "How can I register my restaurant, buka, or canteen?",
-      a: "If you operate a food business in Ijebu Ode—whether a traditional buka, modern restaurant, grill spot, or home bakery—visit our 'For Food Businesses' page to submit your interest. Our onboarding team will contact you directly to discuss details."
-    },
-    {
-      category: 'vendors',
-      q: "Does it cost anything for a food business to join?",
-      a: "No upfront fees are charged to express interest or join the founding cohort. We assist with digital menu setup so local businesses can test the system risk-free."
-    },
-    {
-      category: 'delivery',
-      q: "Will vendors handle delivery or will wá jẹun have riders?",
-      a: "At initial launch, fulfillment will be handled via customer pickup or delivery organized directly by the food business. wá jẹun does not operate a fleet of motorcycles or employ dedicated delivery riders during this initial phase."
-    },
-    {
-      category: 'delivery',
-      q: "Will customer pickup be available?",
-      a: "Yes. Every participating vendor can offer customer pickup, allowing you to browse menus ahead of time, place your order, and pick up fresh food without waiting in line."
-    },
-    {
-      category: 'diners',
-      q: "How will I know when the marketplace officially opens for ordering?",
-      a: "By registering on our Customer Launch List, you will receive direct WhatsApp or email updates as onboarding progresses and when ordering goes live in your specific neighborhood."
-    },
-    {
-      category: 'general',
-      q: "What happens to my submitted contact information?",
-      a: "Your information is securely stored and used strictly to notify you about the wá jẹun rollout and onboarding. We do not sell your data or share your personal contact details with third parties."
-    }
-  ];
-
-  const filteredFaqs = allFaqs.filter(faq => {
-    if (faqFilter === 'all') return true;
-    if (faqFilter === 'diners') return faq.category === 'diners' || faq.category === 'general';
-    if (faqFilter === 'vendors') return faq.category === 'vendors' || faq.category === 'general';
-    if (faqFilter === 'delivery') return faq.category === 'delivery';
-    return true;
-  });
-
-  return (
-    <div className="flex flex-col min-h-screen">
-
-      {/* 1. Hero Section */}
-      <section className="relative overflow-hidden pt-8 pb-16 md:pt-14 md:pb-24 border-b border-[#123B2A]/10 bg-[#FFF8E9]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
-
-            {/* Left Content */}
-            <div className="lg:col-span-7 space-y-6 text-left">
-
-              {/* Honest Location & Stage Indicator */}
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#123B2A]/5 text-[#123B2A] text-xs font-semibold">
-                <MapPin className="w-3.5 h-3.5 text-[#123B2A]" />
-                <span>Starting in Ijebu Ode, Ogun State</span>
-                <span className="text-[#123B2A]/30">·</span>
-                <span className="text-[#123B2A]/80 font-medium">Pre-Launch Onboarding</span>
-              </div>
-
-              {/* Main Heading */}
-              <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#123B2A] tracking-tight leading-[1.1] text-balance">
-                Built in Ijebu. Made for Ijebu.
-              </h1>
-
-              {/* Supporting Copy */}
-              <p className="text-base sm:text-lg text-[#20231F]/80 max-w-xl leading-relaxed">
-                <span className="font-semibold text-[#123B2A]">Your City. Your Food.</span> We're starting in Ijebu Ode, connecting residents with the independent food businesses and Nigerian meals that make our city special, with room to grow across Ogun State and beyond.
-              </p>
-
-              {/* Dual-Audience Action Pathways */}
-              <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                <Link
-                  to="/customer-register"
-                  className="min-h-12.5 px-7 py-3 text-base font-bold text-[#123B2A] bg-[#B8D94B] hover:bg-[#a7c93e] rounded-xl shadow-sm hover:shadow transition-all text-center flex items-center justify-center gap-2 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]"
-                >
-                  <span>Join the Launch List</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-                <Link
-                  to="/vendor-register"
-                  className="min-h-12.5 px-6 py-3 text-base font-bold text-[#123B2A] bg-white border border-[#123B2A]/20 hover:border-[#123B2A] rounded-xl transition-all text-center flex items-center justify-center gap-2 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]"
-                >
-                  <Store className="w-4 h-4 text-[#123B2A]" />
-                  <span>List Your Food Business</span>
-                </Link>
-              </div>
-
-              {/* Quick Trust / Context Indicators - Clean unboxed text with subtle separators */}
-              <div className="pt-4 flex flex-wrap items-center gap-y-2 gap-x-4 text-xs text-[#20231F]/75">
-                <span className="flex items-center gap-1.5 font-medium">
-                  <CheckCircle2 className="w-4 h-4 text-[#123B2A]" />
-                  Rooted in Ijebu's food culture
-                </span>
-                <span aria-hidden="true" className="text-slate-300">·</span>
-                <span className="flex items-center gap-1.5 font-medium">
-                  <CheckCircle2 className="w-4 h-4 text-[#123B2A]" />
-                  Pickup & Vendor Delivery Planned
-                </span>
-                <span aria-hidden="true" className="text-slate-300">·</span>
-                <span className="flex items-center gap-1.5 font-medium">
-                  <CheckCircle2 className="w-4 h-4 text-[#123B2A]" />
-                  Independent food businesses welcome
-                </span>
-              </div>
-
-            </div>
-
-            {/* Right Visual: Nigerian Jollof Feast Photography */}
-            <div className="lg:col-span-5 relative">
-              <div className="relative rounded-2xl overflow-hidden shadow-xl border border-[#123B2A]/10 bg-white group">
-                <img
-                  src={heroImage}
-                  alt="Nigerian jollof rice feast with grilled chicken and plantain"
-                  className="w-full h-64 sm:h-80 lg:h-112 object-cover"
-                />
-
-                {/* Visual card overlay with clear action */}
-                <div className="p-4 bg-white/95 backdrop-blur-sm border-t border-slate-100 flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-bold text-[#123B2A]">
-                      Ijebu food, made close to home
-                    </p>
-                    <p className="text-[11px] text-[#20231F]/70">
-                      From local bukas to everyday grills in Ijebu Ode
-                    </p>
-                  </div>
-                  <Link
-                    to="/explore"
-                    className="text-xs font-bold text-[#123B2A] hover:underline flex items-center gap-1 focus-visible:outline-none"
-                  >
-                    <span>Preview Food</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-              </div>
-            </div>
-
-          </div>
+  return <main className="bg-[#FFF8E9]">
+    <section className="overflow-hidden border-b border-[#123B2A]/10">
+      <div className="mx-auto grid max-w-7xl items-center gap-8 px-4 py-8 sm:px-6 sm:py-12 lg:grid-cols-[.9fr_1.1fr] lg:gap-12 lg:px-8 lg:py-14">
+        <div className="relative z-10">
+          <p className="inline-flex items-center gap-2 rounded-full border border-[#123B2A]/10 bg-white/80 px-3 py-1.5 text-xs font-semibold text-[#123B2A]"><MapPin className="h-3.5 w-3.5" aria-hidden="true"/>Ijebu Ode and Ijagun, Ogun State</p>
+          <h1 className="mt-5 max-w-xl font-display text-[2.55rem] font-extrabold leading-[1.04] tracking-tight text-[#123B2A] sm:text-5xl lg:text-[3.7rem]">Discover food in Ijebu Ode and Ijagun.</h1>
+          <p className="mt-4 max-w-xl text-base leading-7 text-[#20231F]/75 sm:text-lg">Find local restaurants, bukas and the meals they serve — all in one place.</p>
+          <form onSubmit={submitSearch} role="search" className="mt-6 flex flex-col gap-2 rounded-2xl border border-[#123B2A]/10 bg-white p-2 shadow-[0_12px_35px_-28px_rgba(18,59,42,.55)] sm:flex-row sm:items-center">
+            <label htmlFor="home-food-search" className="sr-only">Search food businesses and meals</label>
+            <div className="flex min-w-0 flex-1 items-center gap-2 px-2"><Search className="h-5 w-5 shrink-0 text-[#123B2A]/55" aria-hidden="true"/><input id="home-food-search" type="search" value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder="What are you hungry for?" className="min-h-11 w-full min-w-0 bg-transparent text-sm text-[#20231F] placeholder:text-[#20231F]/45 focus:outline-none"/></div>
+            <button type="submit" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#123B2A] px-5 text-sm font-bold text-white transition-colors hover:bg-[#194d37] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A] focus-visible:ring-offset-2">Search food <ArrowRight className="h-4 w-4" aria-hidden="true"/></button>
+          </form>
+          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#20231F]/60"><span className="font-semibold text-[#123B2A]">Browse:</span>{FOOD_CATEGORIES.slice(0, 4).map((category, index) => <React.Fragment key={category.id}><Link className="rounded-sm underline decoration-[#123B2A]/25 underline-offset-2 hover:text-[#123B2A] hover:decoration-[#123B2A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]" to={`/explore?category=${encodeURIComponent(category.id)}`}>{category.name}</Link>{index < 3 && <span aria-hidden="true">·</span>}</React.Fragment>)}</div>
+          <p className="mt-5 inline-flex items-start gap-2 rounded-lg bg-[#123B2A]/[.045] px-3 py-2 text-xs font-medium leading-5 text-[#123B2A]"><UtensilsCrossed className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true"/>Browse approved local food businesses. Ordering has not launched yet.</p>
         </div>
-      </section>
+        <ScrollReveal className="min-w-0">
+          <figure className="food-card-hover relative overflow-hidden rounded-[1.6rem] border border-[#123B2A]/10 bg-white shadow-[0_24px_70px_-42px_rgba(18,59,42,.55)]">
+            <img src={heroImage} alt="A Nigerian jollof meal served with grilled chicken and plantain" width="1100" height="614" fetchPriority="high" decoding="async" className="food-card-image aspect-[1.55] w-full object-cover sm:aspect-[1.65]"/>
+            <figcaption className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 bg-gradient-to-t from-black/70 via-black/25 to-transparent px-5 pb-5 pt-16 text-white sm:px-7 sm:pb-7">
+              <div><p className="text-[10px] font-bold uppercase tracking-[.17em] text-[#D7EF83]">Built in Ijebu. Made for Ijebu.</p><p className="mt-1 font-display text-lg font-bold sm:text-xl">Your city. Your food.</p></div>
+              <Link to="/explore" className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg bg-white px-3 text-xs font-bold text-[#123B2A] transition-colors hover:bg-[#B8D94B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#123B2A]">Explore <ArrowRight className="h-4 w-4" aria-hidden="true"/></Link>
+            </figcaption>
+          </figure>
+        </ScrollReveal>
+      </div>
+    </section>
 
-      {/* 2. Pre-Launch Preparation — Progress Timeline */}
-      <section className="bg-white py-16 md:py-20 border-b border-[#123B2A]/10 overflow-hidden">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section aria-labelledby="market-area-heading" className="border-b border-[#123B2A]/10 bg-[#FFF8E9] py-7">
+      <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+        <div><h2 id="market-area-heading" className="font-display text-lg font-bold text-[#123B2A]">Choose your area</h2><p className="mt-1 text-xs text-[#20231F]/65">See approved food businesses serving your part of town.</p></div>
+        <div className="flex flex-wrap gap-2">{MARKET_AREAS.map(area => <Link key={area.id} to={`/explore?marketArea=${encodeURIComponent(area.id)}`} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#123B2A]/15 bg-white px-4 text-sm font-semibold text-[#123B2A] hover:border-[#123B2A]/40 hover:bg-[#123B2A]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]">{area.label}<ArrowRight className="h-4 w-4" aria-hidden="true"/></Link>)}</div>
+      </div>
+    </section>
 
-          {/* ── Header ── */}
-          <div className="text-center space-y-4 max-w-2xl mx-auto mb-12 md:mb-14">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#123B2A]/5 text-[#123B2A] text-[11px] font-bold tracking-wider uppercase">
-              <Clock className="w-3.5 h-3.5" />
-              Pre-Launch Preparation
-            </span>
-
-            <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#123B2A] tracking-tight leading-[1.15]">
-              Ijebu Ode's local food scene deserves to be discovered.
-            </h2>
-
-            <p className="text-sm sm:text-base text-[#20231F]/75 leading-relaxed max-w-xl mx-auto">
-              We're preparing Wá Jẹun, a new way to discover local food businesses in Ijebu Ode. We're getting the platform ready and inviting our first food vendors to join us before public ordering begins.
-            </p>
-          </div>
-
-          {/* ── Timeline phases ── */}
-          <div className="relative grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-5 lg:gap-6">
-
-            {/* ── Horizontal progress connector (desktop) ── */}
-            <div className="hidden md:block absolute top-11 left-[calc(16.67%+12px)] right-[calc(16.67%+12px)] h-0.5 z-0" aria-hidden="true">
-              {/* Track */}
-              <div className="absolute inset-0 bg-[#123B2A]/8 rounded-full" />
-              {/* Filled progress — through Phase 1 + halfway into Phase 2 */}
-              <div className="absolute left-0 top-0 bottom-0 w-[62%] bg-linear-to-r from-[#B8D94B] to-[#B8D94B]/60 rounded-full" />
-            </div>
-
-            {/* ── Phase 1: Platform Preparation ── */}
-            <div className="relative z-10 group">
-              {/* Step indicator */}
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-[#123B2A] text-white flex items-center justify-center shrink-0 shadow-sm">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-                <div className="flex-1 flex items-center justify-between md:justify-start md:gap-2">
-                  <span className="text-[11px] font-bold text-[#123B2A]/50 uppercase tracking-wider">Phase 1</span>
-                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-full">
-                    Ready
-                  </span>
-                </div>
-                {/* Mobile vertical connector */}
-                <div className="md:hidden absolute left-4.75 top-13 bottom-0 w-0.5 bg-linear-to-b from-[#B8D94B] to-[#B8D94B]/40 rounded-full" aria-hidden="true" />
-              </div>
-              {/* Card */}
-              <div className="ml-0 md:ml-0 p-5 rounded-2xl bg-[#FFF8E9] border border-[#123B2A]/10 space-y-2 transition-shadow duration-200 hover:shadow-md group-focus-within:shadow-md">
-                <h3 className="font-display text-base font-bold text-[#123B2A]">
-                  Platform Preparation
-                </h3>
-                <p className="text-xs text-[#20231F]/70 leading-relaxed">
-                  Building the foundation for restaurant discovery, digital menus, and local food listings.
-                </p>
-              </div>
-            </div>
-
-            {/* ── Phase 2: Meet Our First Vendors ── */}
-            <div className="relative z-10 group">
-              {/* Step indicator */}
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-[#B8D94B] text-[#123B2A] flex items-center justify-center shrink-0 shadow-sm ring-[3px] ring-[#B8D94B]/25">
-                  <Store className="w-5 h-5" />
-                </div>
-                <div className="flex-1 flex items-center justify-between md:justify-start md:gap-2">
-                  <span className="text-[11px] font-bold text-[#123B2A]/50 uppercase tracking-wider">Phase 2</span>
-                  <span className="text-[11px] font-bold text-[#123B2A] bg-[#B8D94B]/30 border border-[#B8D94B]/50 px-2.5 py-0.5 rounded-full">
-                    In Progress
-                  </span>
-                </div>
-                {/* Mobile vertical connector */}
-                <div className="md:hidden absolute left-4.75 top-13 bottom-0 w-0.5 bg-[#123B2A]/8 rounded-full" aria-hidden="true" />
-              </div>
-              {/* Card — elevated for current phase */}
-              <div className="ml-0 md:ml-0 p-5 rounded-2xl bg-white border-2 border-[#B8D94B]/40 shadow-sm space-y-2 transition-shadow duration-200 hover:shadow-md group-focus-within:shadow-md">
-                <h3 className="font-display text-base font-bold text-[#123B2A]">
-                  Meet Our First Vendors
-                </h3>
-                <p className="text-xs text-[#20231F]/70 leading-relaxed">
-                  We're inviting bukas, restaurants, grills, bakeries, and other food businesses in Ijebu Ode to express interest in joining Wá Jẹun.
-                </p>
-              </div>
-            </div>
-
-            {/* ── Phase 3: Online Ordering ── */}
-            <div className="relative z-10 group">
-              {/* Step indicator */}
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center shrink-0 border border-slate-200">
-                  <ShoppingBag className="w-5 h-5" />
-                </div>
-                <div className="flex-1 flex items-center justify-between md:justify-start md:gap-2">
-                  <span className="text-[11px] font-bold text-[#123B2A]/50 uppercase tracking-wider">Phase 3</span>
-                  <span className="text-[11px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full">
-                    Upcoming
-                  </span>
-                </div>
-              </div>
-              {/* Card */}
-              <div className="ml-0 md:ml-0 p-5 rounded-2xl bg-[#FFF8E9] border border-[#123B2A]/8 space-y-2 opacity-90 transition-shadow duration-200 hover:shadow-md hover:opacity-100 group-focus-within:shadow-md group-focus-within:opacity-100">
-                <h3 className="font-display text-base font-bold text-[#123B2A]">
-                  Online Ordering
-                </h3>
-                <p className="text-xs text-[#20231F]/70 leading-relaxed">
-                  We're preparing for customers to explore menus, view food prices, and place orders for pickup or vendor-managed delivery as these features become available.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Supporting note ── */}
-          <p className="mt-6 text-[11px] sm:text-xs text-[#20231F]/50 text-center leading-relaxed max-w-lg mx-auto">
-            Expressing interest does not guarantee acceptance or immediate access to ordering.
-          </p>
-
-          {/* ── CTAs ── */}
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link
-              to="/vendor-register"
-              className="min-h-12 px-7 py-3 text-sm font-bold text-[#123B2A] bg-[#B8D94B] hover:bg-[#a9cc38] rounded-xl shadow-sm hover:shadow-md transition-all duration-200 ease-out hover:-translate-y-px active:translate-y-0 active:scale-[0.98] flex items-center justify-center gap-2 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A] focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
-            >
-              <Store className="w-4 h-4" />
-              <span>Register Your Food Business</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              to="/explore"
-              className="min-h-12 px-6 py-3 text-sm font-bold text-[#123B2A] bg-white border border-[#123B2A]/15 hover:border-[#123B2A]/40 rounded-xl transition-all duration-200 ease-out hover:shadow-sm active:scale-[0.98] flex items-center justify-center gap-1.5 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A] focus-visible:ring-offset-2 motion-reduce:transition-none"
-            >
-              <Compass className="w-4 h-4" />
-              <span>Explore Wá Jẹun</span>
-            </Link>
-          </div>
-
+    <section id="food-categories" className="scroll-mt-24 bg-white py-11 sm:py-14">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.15em] text-[#123B2A]/55">Follow your craving</p><h2 className="mt-2 font-display text-2xl font-bold tracking-tight text-[#123B2A] sm:text-3xl">What are you in the mood for?</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-[#20231F]/65">Choose a food category to see matching menus from approved businesses in Ijebu Ode and Ijagun.</p></div><Link to="/explore" className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-[#123B2A] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]">All food categories <ArrowRight className="h-4 w-4" aria-hidden="true"/></Link></div>
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+          {FOOD_CATEGORIES.map((category, index) => <ScrollReveal key={category.id} delayMs={Math.min(index * 25, 100)} className="h-full"><Link to={`/explore?category=${encodeURIComponent(category.id)}`} className="group food-card-hover block h-full overflow-hidden rounded-2xl border border-[#123B2A]/10 bg-[#FFF8E9] transition-colors hover:border-[#123B2A]/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A] focus-visible:ring-offset-2">
+            <div className="overflow-hidden"><img src={category.image} alt="" width="768" height="573" loading="lazy" decoding="async" className="food-card-image aspect-[1.5] w-full object-cover"/></div>
+            <div className="flex min-h-[4.5rem] items-center justify-between gap-2 px-3 py-3 sm:px-4"><h3 className="font-display text-sm font-bold leading-snug text-[#123B2A] sm:text-base">{category.name}</h3><ArrowRight className="h-4 w-4 shrink-0 text-[#123B2A]/55 transition-transform group-hover:translate-x-0.5 group-hover:text-[#123B2A] motion-reduce:transition-none" aria-hidden="true"/></div>
+          </Link></ScrollReveal>)}
         </div>
-      </section>
+      </div>
+    </section>
 
-      {/* 3. Food Discovery Categories */}
-      <section className="py-16 bg-[#FFF8E9] border-b border-[#123B2A]/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+    <section className="py-11 sm:py-14">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.15em] text-[#123B2A]/55">Real local listings</p><h2 className="mt-2 font-display text-2xl font-bold tracking-tight text-[#123B2A] sm:text-3xl">Food businesses in Ijebu Ode and Ijagun</h2><p className="mt-2 text-sm leading-6 text-[#20231F]/65">Menus come from the businesses listed here. No sample restaurants or made-up ratings.</p></div><Link to="/explore" className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-[#123B2A] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]">Explore the directory <ArrowRight className="h-4 w-4" aria-hidden="true"/></Link></div>
+        {directoryState === 'loading' ? <div role="status" className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"><span className="sr-only">Loading local food businesses…</span>{[0, 1, 2].map(item => <div key={item} aria-hidden="true" className="overflow-hidden rounded-2xl border border-[#123B2A]/10 bg-white"><div className="aspect-[1.7] animate-pulse bg-[#123B2A]/[.07] motion-reduce:animate-none"/><div className="space-y-3 p-5"><div className="h-4 w-2/3 animate-pulse rounded bg-[#123B2A]/[.08] motion-reduce:animate-none"/><div className="h-3 w-full animate-pulse rounded bg-[#123B2A]/[.06] motion-reduce:animate-none"/><div className="h-10 animate-pulse rounded-xl bg-[#123B2A]/[.06] motion-reduce:animate-none"/></div></div>)}</div>
+          : directoryState === 'error' ? <div className="mt-6 rounded-2xl border border-red-200 bg-white p-6 sm:p-8"><h3 className="font-display text-lg font-bold text-[#123B2A]">The food directory could not load</h3><p role="alert" className="mt-2 max-w-2xl text-sm leading-6 text-[#20231F]/70">Please check your connection and try again. We don’t want to show an empty directory when the service is unavailable.</p><button type="button" onClick={() => setReloadCount(count => count + 1)} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-[#123B2A] px-4 text-sm font-bold text-white hover:bg-[#194d37] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A] focus-visible:ring-offset-2">Try again</button></div>
+            : vendors.length > 0 ? <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{vendors.slice(0, 3).map((vendor, index) => <HomeVendorCard key={vendor.id} vendor={vendor} delayMs={index * 35}/>)}</div>
+              : <div className="mt-6 rounded-2xl border border-[#123B2A]/10 bg-white p-6 sm:p-8"><p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.12em] text-[#123B2A]/60"><Store className="h-4 w-4" aria-hidden="true"/>A directory that grows with the city</p><h3 className="mt-2 font-display text-xl font-bold text-[#123B2A]">Local kitchens are joining wá jẹun</h3><p className="mt-2 max-w-2xl text-sm leading-6 text-[#20231F]/70">There are no approved, order-ready food businesses to display yet. Join the launch list for updates, or tell us which local kitchen you’d like to discover here.</p><div className="mt-5 flex flex-col gap-2 sm:flex-row"><Link to="/customer-register" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#B8D94B] px-4 text-sm font-bold text-[#123B2A] hover:bg-[#a7c93e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]">Join the customer launch list</Link><Link to="/legal?tab=contact" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#123B2A]/15 px-4 text-sm font-semibold text-[#123B2A] hover:bg-[#FFF8E9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]">Suggest a food business</Link></div></div>}
+      </div>
+    </section>
 
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-[#123B2A]">
-                Explore Food Types
-              </p>
-              <h2 className="font-display text-3xl font-extrabold text-[#123B2A] tracking-tight mt-1">
-                What will you crave today?
-              </h2>
-              <p className="text-sm text-[#20231F]/75 mt-1">
-                Preview the food varieties that will be featured as Ijebu Ode food businesses join.
-              </p>
-            </div>
-
-            <Link
-              to="/explore"
-              className="inline-flex items-center gap-2 text-sm font-bold text-[#123B2A] hover:text-[#123B2A]/80 focus-visible:outline-none"
-            >
-              <span>Explore all categories</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-
-          {/* Grid of Categories with Nigerian Food Photography */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {FOOD_CATEGORIES.map((category) => (
-              <div
-                key={category.id}
-                onClick={() => handleCategoryClick(category.id)}
-                className="group cursor-pointer rounded-2xl bg-white border border-[#123B2A]/10 overflow-hidden shadow-sm hover:shadow-md transition-all hover:-translate-y-1 flex flex-col justify-between"
-              >
-                <div className="relative h-44 w-full overflow-hidden bg-slate-100">
-                  <img
-                    src={category.image}
-                    alt={category.name}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = 'none';
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent" />
-                  <div className="absolute bottom-3 left-3 right-3 text-white">
-                    <h3 className="font-bold text-base leading-snug drop-shadow-sm">
-                      {category.name}
-                    </h3>
-                  </div>
-                </div>
-
-                <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                  <div className="space-y-1.5">
-                    <p className="text-xs text-[#20231F]/70 line-clamp-2 leading-relaxed">
-                      {category.description}
-                    </p>
-                    <p className="text-[11px] text-[#123B2A]/80 font-medium line-clamp-1">
-                      {category.popularItems.slice(0, 3).join(' · ')}
-                    </p>
-                  </div>
-
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-[#123B2A]">
-                    <span>View upcoming listings</span>
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-        </div>
-      </section>
-
-      {/* 4. How wá jẹun Will Work (Dual-Audience Tab Switcher) */}
-      <section id="how-it-works" className="py-16 md:py-20 bg-white border-b border-[#123B2A]/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-
-          <div className="text-center max-w-2xl mx-auto space-y-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#123B2A]">
-              Simple & Straightforward
-            </span>
-            <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-[#123B2A] tracking-tight">
-              How wá jẹun will work.
-            </h2>
-            <p className="text-sm sm:text-base text-[#20231F]/75">
-              Online food discovery and ordering designed specifically for Ijebu Ode's neighborhoods.
-            </p>
-
-            {/* Audience Segment Tabs */}
-            <div className="pt-2 inline-flex items-center p-1 bg-slate-100 rounded-xl">
-              <button
-                onClick={() => setHowItWorksTab('diners')}
-                type="button"
-                className={`min-h-10 px-5 text-xs font-bold rounded-lg transition-all ${howItWorksTab === 'diners'
-                  ? 'bg-white text-[#123B2A] shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-                  }`}
-              >
-                For Food Lovers
-              </button>
-              <button
-                onClick={() => setHowItWorksTab('vendors')}
-                type="button"
-                className={`min-h-10 px-5 text-xs font-bold rounded-lg transition-all ${howItWorksTab === 'vendors'
-                  ? 'bg-white text-[#123B2A] shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-                  }`}
-              >
-                For Food Businesses
-              </button>
-            </div>
-          </div>
-
-          {/* Diners Step Grid */}
-          {howItWorksTab === 'diners' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in duration-200">
-
-              {/* Step 1 */}
-              <div className="space-y-3 p-6 rounded-2xl bg-[#FFF8E9] border border-[#123B2A]/10 relative">
-                <div className="w-10 h-10 rounded-xl bg-[#123B2A] text-white flex items-center justify-center font-bold text-sm">
-                  01
-                </div>
-                <h3 className="font-display text-lg font-bold text-[#123B2A]">
-                  Discover local spots
-                </h3>
-                <p className="text-xs text-[#20231F]/80 leading-relaxed">
-                  Discover food businesses in Ijebu Ode neighborhoods such as Molipa, Igbeba, and Folagbade as they join the platform.
-                </p>
-              </div>
-
-              {/* Step 2 */}
-              <div className="space-y-3 p-6 rounded-2xl bg-[#FFF8E9] border border-[#123B2A]/10 relative">
-                <div className="w-10 h-10 rounded-xl bg-[#123B2A] text-white flex items-center justify-center font-bold text-sm">
-                  02
-                </div>
-                <h3 className="font-display text-lg font-bold text-[#123B2A]">
-                  See real menus & prices
-                </h3>
-                <p className="text-xs text-[#20231F]/80 leading-relaxed">
-                  Check exact dishes, available proteins, side combinations, and transparent pricing updated by each vendor.
-                </p>
-              </div>
-
-              {/* Step 3 */}
-              <div className="space-y-3 p-6 rounded-2xl bg-[#FFF8E9] border border-[#123B2A]/10 relative">
-                <div className="w-10 h-10 rounded-xl bg-[#123B2A] text-white flex items-center justify-center font-bold text-sm">
-                  03
-                </div>
-                <h3 className="font-display text-lg font-bold text-[#123B2A]">
-                  Place your order online
-                </h3>
-                <p className="text-xs text-[#20231F]/80 leading-relaxed">
-                  Once participating businesses go live, order directly without endless phone calls or WhatsApp back-and-forth.
-                </p>
-              </div>
-
-              {/* Step 4 */}
-              <div className="space-y-3 p-6 rounded-2xl bg-[#FFF8E9] border border-[#123B2A]/10 relative">
-                <div className="w-10 h-10 rounded-xl bg-[#123B2A] text-white flex items-center justify-center font-bold text-sm">
-                  04
-                </div>
-                <h3 className="font-display text-lg font-bold text-[#123B2A]">
-                  Pickup or vendor delivery
-                </h3>
-                <p className="text-xs text-[#20231F]/80 leading-relaxed">
-                  Pick up freshly packed food directly, or receive delivery arranged by the food business where offered.
-                </p>
-              </div>
-
-            </div>
-          )}
-
-          {/* Vendors Step Grid */}
-          {howItWorksTab === 'vendors' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in duration-200">
-
-              {/* Step 1 */}
-              <div className="space-y-3 p-6 rounded-2xl bg-[#FFF8E9] border border-[#123B2A]/10 relative">
-                <div className="w-10 h-10 rounded-xl bg-[#123B2A] text-white flex items-center justify-center font-bold text-sm">
-                  01
-                </div>
-                <h3 className="font-display text-lg font-bold text-[#123B2A]">
-                  Submit your interest
-                </h3>
-                <p className="text-xs text-[#20231F]/80 leading-relaxed">
-                  Fill in simple details about your buka, restaurant, or grill in under 2 minutes with no registration cost.
-                </p>
-              </div>
-
-              {/* Step 2 */}
-              <div className="space-y-3 p-6 rounded-2xl bg-[#FFF8E9] border border-[#123B2A]/10 relative">
-                <div className="w-10 h-10 rounded-xl bg-[#123B2A] text-white flex items-center justify-center font-bold text-sm">
-                  02
-                </div>
-                <h3 className="font-display text-lg font-bold text-[#123B2A]">
-                  Free menu digitization
-                </h3>
-                <p className="text-xs text-[#20231F]/80 leading-relaxed">
-                  Our Ijebu Ode team assists you with listing dishes, prices, and operating hours in a clean online storefront.
-                </p>
-              </div>
-
-              {/* Step 3 */}
-              <div className="space-y-3 p-6 rounded-2xl bg-[#FFF8E9] border border-[#123B2A]/10 relative">
-                <div className="w-10 h-10 rounded-xl bg-[#123B2A] text-white flex items-center justify-center font-bold text-sm">
-                  03
-                </div>
-                <h3 className="font-display text-lg font-bold text-[#123B2A]">
-                  Set your fulfillment rules
-                </h3>
-                <p className="text-xs text-[#20231F]/80 leading-relaxed">
-                  Decide whether customers pick up orders at your counter, or whether you dispatch with your existing delivery.
-                </p>
-              </div>
-
-              {/* Step 4 */}
-              <div className="space-y-3 p-6 rounded-2xl bg-[#FFF8E9] border border-[#123B2A]/10 relative">
-                <div className="w-10 h-10 rounded-xl bg-[#123B2A] text-white flex items-center justify-center font-bold text-sm">
-                  04
-                </div>
-                <h3 className="font-display text-lg font-bold text-[#123B2A]">
-                  Grow your daily sales
-                </h3>
-                <p className="text-xs text-[#20231F]/80 leading-relaxed">
-                  Reach new customers across Ijebu Ode neighborhoods who are eager to discover and patronize your kitchen.
-                </p>
-              </div>
-
-            </div>
-          )}
-
-          {/* Operational Clarity Callout */}
-          <div className="p-4 rounded-xl bg-[#123B2A]/5 border border-[#123B2A]/10 max-w-3xl mx-auto flex items-start gap-3">
-            <ShieldCheck className="w-5 h-5 text-[#123B2A] shrink-0 mt-0.5" />
-            <p className="text-xs text-[#20231F]/80 leading-relaxed">
-              <strong>Fulfillment Clarification:</strong> wá jẹun does not operate motorbikes or employ dispatch riders. Participating food businesses coordinate their own delivery arrangements directly with customers.
-            </p>
-          </div>
-
-        </div>
-      </section>
-
-      {/* 5. For Food Businesses Recruitment Section */}
-      <section className="py-16 md:py-24 bg-[#123B2A] text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-
-            <div className="lg:col-span-8 space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#B8D94B]/20 text-[#B8D94B] text-xs font-bold uppercase tracking-wider">
-                <Store className="w-3.5 h-3.5" />
-                <span>Founding Vendor Cohort</span>
-              </div>
-
-              <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight text-white">
-                Your food deserves to be discovered.
-              </h2>
-
-              <p className="text-base sm:text-lg text-white/80 max-w-2xl leading-relaxed">
-                wá jẹun is preparing a new way for people in Ijebu Ode to discover local food businesses. Tell us about your business and register your interest in joining the first group of vendors.
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 text-sm text-white/90">
-                <div className="flex items-start gap-2.5">
-                  <CheckCircle2 className="w-5 h-5 text-[#B8D94B] shrink-0 mt-0.5" />
-                  <span>Free digital storefront for your menu</span>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <CheckCircle2 className="w-5 h-5 text-[#B8D94B] shrink-0 mt-0.5" />
-                  <span>Be ready to reach customers when ordering opens in Ijebu Ode</span>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <CheckCircle2 className="w-5 h-5 text-[#B8D94B] shrink-0 mt-0.5" />
-                  <span>No upfront fees to express interest</span>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <CheckCircle2 className="w-5 h-5 text-[#B8D94B] shrink-0 mt-0.5" />
-                  <span>Direct onboarding assistance for your staff</span>
-                </div>
-              </div>
-
-              <div className="pt-4 flex flex-col sm:flex-row gap-3">
-                <Link
-                  to="/vendor-register"
-                  className="min-h-12 px-8 py-3.5 text-base font-bold text-[#123B2A] bg-[#B8D94B] hover:bg-[#a7c93e] rounded-xl shadow-lg transition-all text-center flex items-center justify-center gap-2 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-                >
-                  <span>Register Your Business</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-                <Link
-                  to="/legal?tab=contact"
-                  className="min-h-12 px-6 py-3.5 text-base font-bold text-white border border-white/20 hover:border-white rounded-xl transition-all text-center flex items-center justify-center active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-                >
-                  Ask a Question
-                </Link>
-              </div>
-
-            </div>
-
-            {/* Quick vendor requirements note */}
-            <div className="lg:col-span-4 bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
-              <h3 className="font-display text-base font-bold text-[#B8D94B]">
-                Who can register?
-              </h3>
-              <ul className="space-y-3 text-xs text-white/80">
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#B8D94B]" />
-                  <span>Traditional bukas and local soup joints</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#B8D94B]" />
-                  <span>Restaurants & modern dining spots</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#B8D94B]" />
-                  <span>Evening grills, suya masters & shawarma stands</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#B8D94B]" />
-                  <span>Bakeries, pastry makers & caterers</span>
-                </li>
-              </ul>
-              <p className="text-[11px] text-white/50 pt-2 border-t border-white/10 leading-relaxed">
-                *Submitting an interest form expresses willingness to join discussions; it does not constitute a binding commercial agreement.
-              </p>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* 6. Frequently Asked Questions with Fast Category Filters */}
-      <section id="faq" className="py-16 md:py-20 bg-[#FFF8E9] border-b border-[#123B2A]/10">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-
-          <div className="text-center space-y-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#123B2A]">
-              Frequently Asked Questions
-            </span>
-            <h2 className="font-display text-3xl font-extrabold text-[#123B2A]">
-              Answers you can trust.
-            </h2>
-            <p className="text-sm text-[#20231F]/70">
-              Clear, transparent facts about our current pre-launch stage in Ijebu Ode.
-            </p>
-
-            {/* Filter Tabs */}
-            <div className="pt-3 flex flex-wrap items-center justify-center gap-1.5">
-              <button
-                onClick={() => setFaqFilter('all')}
-                type="button"
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${faqFilter === 'all'
-                  ? 'bg-[#123B2A] text-white'
-                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-                  }`}
-              >
-                All Questions
-              </button>
-              <button
-                onClick={() => setFaqFilter('diners')}
-                type="button"
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${faqFilter === 'diners'
-                  ? 'bg-[#123B2A] text-white'
-                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-                  }`}
-              >
-                For Customers
-              </button>
-              <button
-                onClick={() => setFaqFilter('vendors')}
-                type="button"
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${faqFilter === 'vendors'
-                  ? 'bg-[#123B2A] text-white'
-                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-                  }`}
-              >
-                For Food Businesses
-              </button>
-              <button
-                onClick={() => setFaqFilter('delivery')}
-                type="button"
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${faqFilter === 'delivery'
-                  ? 'bg-[#123B2A] text-white'
-                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-                  }`}
-              >
-                Delivery & Pickup
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            {filteredFaqs.map((faq, idx) => {
-              const isOpen = openFaq === idx;
-              return (
-                <div
-                  key={idx}
-                  className="rounded-xl border border-[#123B2A]/15 bg-white overflow-hidden transition-all shadow-xs"
-                >
-                  <button
-                    onClick={() => toggleFaq(idx)}
-                    className="w-full min-h-13 px-5 py-4 text-left flex items-center justify-between gap-4 font-semibold text-sm sm:text-base text-[#123B2A] hover:bg-slate-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]"
-                    aria-expanded={isOpen}
-                  >
-                    <span>{faq.q}</span>
-                    <ChevronDown
-                      className={`w-4 h-4 shrink-0 transition-transform duration-200 text-[#123B2A] ${isOpen ? 'rotate-180' : ''
-                        }`}
-                    />
-                  </button>
-
-                  {isOpen && (
-                    <div className="px-5 pb-5 text-xs sm:text-sm text-[#20231F]/80 leading-relaxed border-t border-slate-100 pt-3">
-                      {faq.a}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-        </div>
-      </section>
-
-      {/* 7. Bottom Dual-Audience Conversion Cards */}
-      <section className="py-16 bg-white">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 text-center">
-
-          <div className="space-y-2">
-            <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#123B2A]">
-              Ready to be part of wá jẹun's journey?
-            </h2>
-            <p className="text-sm text-[#20231F]/75 max-w-xl mx-auto">
-              Whether you want to discover delicious meals or bring your kitchen online, choose your pathway below.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-            {/* Card 1: For Customers */}
-            <div className="p-6 rounded-2xl bg-[#FFF8E9] border border-[#123B2A]/15 flex flex-col justify-between space-y-4">
-              <div className="space-y-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#123B2A]">For Food Lovers</span>
-                <h3 className="text-xl font-bold text-[#123B2A]">Join Customer Launch List</h3>
-                <p className="text-xs sm:text-sm text-[#20231F]/75 leading-relaxed">
-                  Be notified as soon as authentic bukas and eateries in your neighborhood are ready for pickup and delivery orders.
-                </p>
-              </div>
-              <div>
-                <Link
-                  to="/customer-register"
-                  className="w-full min-h-11.5 px-6 py-2.5 text-sm font-bold text-[#123B2A] bg-[#B8D94B] hover:bg-[#a7c93e] rounded-xl transition-all flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]"
-                >
-                  <span>Get Early Access</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
-            </div>
-
-            {/* Card 2: For Food Businesses */}
-            <div className="p-6 rounded-2xl bg-[#123B2A] text-white flex flex-col justify-between space-y-4">
-              <div className="space-y-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#B8D94B]">For Food Businesses</span>
-                <h3 className="text-xl font-bold text-white">Register Your Kitchen</h3>
-                <p className="text-xs sm:text-sm text-white/80 leading-relaxed">
-                  Join our founding vendor cohort in Ijebu Ode. Free digital menu setup, zero upfront fees, and direct customer connection.
-                </p>
-              </div>
-              <div>
-                <Link
-                  to="/vendor-register"
-                  className="w-full min-h-11.5 px-6 py-2.5 text-sm font-bold text-[#123B2A] bg-white hover:bg-slate-100 rounded-xl transition-all flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-                >
-                  <Store className="w-4 h-4 text-[#123B2A]" />
-                  <span>Register Food Business</span>
-                </Link>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-    </div>
-  );
+    <section className="border-y border-[#123B2A]/10 bg-white py-11 sm:py-14">
+      <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 md:grid-cols-[1fr_auto] md:items-center lg:px-8"><div><p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.15em] text-[#123B2A]/55"><Store className="h-4 w-4" aria-hidden="true"/>For Ijebu food businesses</p><h2 className="mt-2 max-w-2xl font-display text-2xl font-bold text-[#123B2A] sm:text-3xl">Make your menu easier for your neighbours to find.</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-[#20231F]/70">Apply to bring your real food business and menu to Wá Jẹun. Applications are reviewed before a storefront can appear in public discovery.</p></div><Link to="/vendor-register" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#123B2A] px-5 text-sm font-bold text-white hover:bg-[#194d37] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A] focus-visible:ring-offset-2">Register your food business <ArrowRight className="h-4 w-4" aria-hidden="true"/></Link></div>
+    </section>
+  </main>;
 };
+
+function HomeVendorCard({ vendor, delayMs }: { vendor: PublicVendorBusiness; delayMs: number }) {
+  const firstMeal = vendor.menu[0];
+  const availability = getPublicStoreAvailability(vendor);
+  return <ScrollReveal delayMs={delayMs} className="h-full"><article className="food-card-hover h-full overflow-hidden rounded-2xl border border-[#123B2A]/10 bg-white shadow-[0_5px_18px_-14px_rgba(18,59,42,.45)]"><FoodPhoto src={firstMeal?.image_url || null} alt={firstMeal?.name || ''} className="food-card-image aspect-[1.7] w-full"/><div className="p-5"><div className="flex items-start justify-between gap-3"><h3 className="font-display text-lg font-bold leading-snug text-[#123B2A]">{vendor.business_name}</h3><span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${availability.open ? 'bg-[#B8D94B]/25 text-[#123B2A]' : 'bg-[#20231F]/5 text-[#20231F]/65'}`}>{availability.open ? 'Open' : 'Closed'}</span></div><p className="mt-1 flex items-center gap-1.5 text-xs text-[#20231F]/60"><MapPin className="h-3.5 w-3.5 text-[#123B2A]" aria-hidden="true"/>{marketAreaLabel(vendor.market_area)} · {vendor.neighborhood}</p><p className="mt-2 text-xs text-[#20231F]/60">{vendor.street_address || vendor.nearby_landmark ? [vendor.street_address, vendor.nearby_landmark].filter(Boolean).join(" · ") : "Location details will be confirmed by this business."}</p><p className="mt-3 line-clamp-2 min-h-10 text-sm leading-5 text-[#20231F]/70">{vendor.description}</p><p className="mt-2 text-xs leading-5 text-[#20231F]/60">{vendor.fulfillment_options === 'pickup_only' ? 'Customer pickup' : vendor.fulfillment_options === 'vendor_delivery' ? 'Vendor-managed delivery' : 'Customer pickup and vendor-managed delivery'}{vendor.delivery_coverage.length > 0 ? ` · Delivery to ${vendor.delivery_coverage.map(marketAreaLabel).join(', ')}` : ''}</p>{firstMeal && <div className="mt-4 flex items-center justify-between gap-3 border-t border-[#123B2A]/10 pt-3 text-sm"><span className="line-clamp-1 text-[#20231F]/75">{firstMeal.name}</span><strong className="shrink-0 text-[#123B2A]">{formatNaira(firstMeal.price_ngn)}</strong></div>}<p className="mt-3 flex items-center gap-2 text-xs text-[#20231F]/55"><Clock3 className="h-3.5 w-3.5" aria-hidden="true"/>{availability.label}</p><Link to={`/vendors/${encodeURIComponent(vendor.id)}/menu`} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#123B2A]/20 text-sm font-bold text-[#123B2A] hover:bg-[#123B2A] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A] focus-visible:ring-offset-2">View menu <ArrowRight className="h-4 w-4" aria-hidden="true"/></Link></div></article></ScrollReveal>;
+}

@@ -3,11 +3,16 @@ import { AlertCircle, Check, ChevronRight, ClipboardList, Loader2, LogOut, Searc
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { api } from '../services/api';
+import { MARKET_AREAS } from '../data/marketAreas';
 
 type VendorSummary = {
   id: string;
   business_name: string;
+  market_area: string;
   neighborhood: string;
+  street_address: string | null;
+  nearby_landmark: string | null;
+  delivery_coverage: string[];
   business_type: string;
   status: string;
   created_at: string;
@@ -18,6 +23,7 @@ type VendorDetails = VendorSummary & {
   email: string | null;
   current_ordering_methods: string[];
   fulfillment_options: string;
+  delivery_fee_ngn: number | null;
   message: string | null;
   consent_accepted: boolean;
   user_id: string | null;
@@ -41,6 +47,7 @@ const statuses = [
   { value: 'declined', label: 'Declined' }
 ];
 const statusLabel = (value: string) => statuses.find(status => status.value === value)?.label || value.replaceAll('_', ' ');
+const marketAreaLabel = (value: string) => MARKET_AREAS.find(area => area.id === value)?.label || value;
 const dateLabel = (value: string) => new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 
 export const AdminPage: React.FC = () => {
@@ -203,7 +210,7 @@ export const AdminPage: React.FC = () => {
                   {visibleApplications.map(application => <tr key={application.id} className="hover:bg-[#FFF8E9]/55">
                     <td className="px-4 py-4 font-semibold text-[#123B2A]">{application.business_name}</td>
                     <td className="px-4 py-4 capitalize text-[#20231F]/75">{application.business_type.replaceAll('_', ' ')}</td>
-                    <td className="px-4 py-4 text-[#20231F]/75">{application.neighborhood}</td>
+                    <td className="px-4 py-4 text-[#20231F]/75">{marketAreaLabel(application.market_area)} · {application.neighborhood}</td>
                     <td className="px-4 py-4 text-[#20231F]/65">{dateLabel(application.created_at)}</td>
                     <td className="px-4 py-4"><StatusBadge status={application.status} /></td>
                     <td className="px-4 py-4"><button type="button" onClick={() => void openDetails(application)} className="inline-flex min-h-10 items-center gap-1 rounded-lg px-2 font-semibold text-[#123B2A] hover:bg-[#123B2A]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]">Review <ChevronRight className="h-4 w-4" /></button></td>
@@ -230,7 +237,13 @@ export const AdminPage: React.FC = () => {
             <Detail label="Email" value={selected.email || 'Not provided'} />
             <Detail label="Business type" value={selected.business_type.replaceAll('_', ' ')} />
             <Detail label="Neighborhood" value={selected.neighborhood} />
+            <Detail label="Market area" value={marketAreaLabel(selected.market_area)} />
+            <Detail label="Street / business address" value={selected.street_address || 'Not provided'} />
+            <Detail label="Nearby landmark" value={selected.nearby_landmark || 'Not provided'} />
             <Detail label="Fulfillment" value={selected.fulfillment_options.replaceAll('_', ' ')} />
+            <Detail label="Pickup" value={['pickup_only', 'pickup_and_delivery'].includes(selected.fulfillment_options) ? 'Available' : 'Not offered'} />
+            <Detail label="Delivery coverage" value={selected.delivery_coverage.map(marketAreaLabel).join(', ') || 'Not provided'} />
+            <Detail label="Delivery fee" value={selected.delivery_fee_ngn === null ? 'Not configured' : `₦${Number(selected.delivery_fee_ngn).toLocaleString('en-NG')}`} />
             <Detail label="Ordering methods" value={selected.current_ordering_methods.map(method => method.replaceAll('_', ' ')).join(', ') || 'Not provided'} />
             <Detail label="Submitted" value={dateLabel(selected.created_at)} />
             {selected.message && <div className="sm:col-span-2"><Detail label="Applicant notes" value={selected.message} /></div>}

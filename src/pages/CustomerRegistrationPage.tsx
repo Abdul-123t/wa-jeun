@@ -15,6 +15,7 @@ import {
 import { FOOD_CATEGORIES, IJEBU_ODE_AREAS } from '../data/categories';
 import { api } from '../services/api';
 import { ContactMethod } from '../types';
+import { MARKET_AREAS } from '../data/marketAreas';
 
 interface CustomerRegistrationPageProps {
   onOpenShare?: () => void;
@@ -26,6 +27,7 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [neighborhood, setNeighborhood] = useState('');
+  const [marketArea, setMarketArea] = useState('ijebu-ode');
   const [customNeighborhood, setCustomNeighborhood] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [consentAccepted, setConsentAccepted] = useState(false);
@@ -65,7 +67,7 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
 
     const finalNeighborhood = neighborhood === 'Other Neighborhood in Ijebu Ode' ? customNeighborhood : neighborhood;
     if (!finalNeighborhood.trim()) {
-      errors.neighborhood = 'Please select or enter your area in Ijebu Ode.';
+      errors.neighborhood = `Please select or enter your area in ${marketArea === 'ijagun' ? 'Ijagun' : 'Ijebu Ode'}.`;
     }
 
     if (!consentAccepted) {
@@ -97,6 +99,7 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
         phone: contactMethod === 'phone' ? phone.trim() : undefined,
         email: contactMethod === 'email' ? email.trim() : undefined,
         neighborhood: finalNeighborhood,
+        marketArea,
         favoriteCategories: selectedCategories,
         consentAccepted
       });
@@ -137,10 +140,10 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
           <div className="bg-[#FFF8E9] p-5 rounded-xl border border-[#123B2A]/10 text-left space-y-2 text-xs sm:text-sm text-[#20231F]/80">
             <div className="font-bold text-[#123B2A] flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-[#123B2A]" />
-              <span>What happens next?</span>
+              <span>Your details</span>
             </div>
             <p className="leading-relaxed">
-              We are working directly with food businesses and bukas in Ijebu Ode. Once vendors in your area (<strong>{neighborhood === 'Other Neighborhood in Ijebu Ode' ? customNeighborhood : neighborhood}</strong>) complete onboarding, we will reach out to you via your preferred channel (<strong>{contactMethod === 'phone' ? 'WhatsApp/Phone' : 'Email'}</strong>).
+              Your interest is recorded for <strong>{neighborhood === 'Other Neighborhood in Ijebu Ode' ? customNeighborhood : neighborhood}</strong>. Your selected contact channel is <strong>{contactMethod === 'phone' ? 'WhatsApp/Phone' : 'Email'}</strong>.
             </p>
             {successData.registrationId && (
               <p className="text-[11px] text-slate-500 pt-2 border-t border-[#123B2A]/10 font-mono">
@@ -157,7 +160,7 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
                 className="w-full sm:w-auto min-h-[44px] px-6 py-2.5 text-xs font-bold text-[#123B2A] bg-[#B8D94B] hover:bg-[#a7c93e] rounded-xl flex items-center justify-center gap-2"
               >
                 <Share2 className="w-4 h-4" />
-                <span>Tell Friends in Ijebu Ode</span>
+                <span>Tell Friends in Ijebu Ode and Ijagun</span>
               </button>
             )}
             <Link
@@ -188,7 +191,7 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
         <div className="text-center space-y-3">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#123B2A]/5 text-[#123B2A] text-xs font-semibold">
             <MapPin className="w-3.5 h-3.5 text-[#123B2A]" />
-            <span>Ijebu Ode Customer Early Access</span>
+            <span>Ijebu Ode & Ijagun Customer Early Access</span>
           </div>
 
           <h1 className="font-display text-3xl sm:text-4xl font-extrabold text-[#123B2A] tracking-tight">
@@ -196,32 +199,18 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
           </h1>
 
           <p className="text-sm sm:text-base text-[#20231F]/80 max-w-lg mx-auto leading-relaxed">
-            Register your interest in wá jẹun and hear when local food discovery and ordering become available in Ijebu Ode.
+            Register your interest in wá jẹun and hear when local food discovery and ordering become available in Ijebu Ode and Ijagun.
           </p>
           <p className="text-sm text-[#20231F]/65">
-            Want a wá jẹun account? <Link to="/auth?mode=signup" className="font-semibold text-[#123B2A] underline underline-offset-2">Create one</Link> or <Link to="/auth?mode=signin" className="font-semibold text-[#123B2A] underline underline-offset-2">sign in</Link>. The launch list form below remains available without an account.
+            No account needed. <Link to="/auth?mode=signup" className="font-semibold text-[#123B2A] underline underline-offset-2">Create an account</Link> or <Link to="/auth?mode=signin" className="font-semibold text-[#123B2A] underline underline-offset-2">sign in</Link> to use the marketplace.
           </p>
-        </div>
-
-        {/* Cross-Audience Switcher Banner */}
-        <div className="p-3.5 rounded-xl bg-white border border-[#123B2A]/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-xs">
-          <span className="text-[#20231F]/80 font-medium">
-            Are you a restaurant, buka, or caterer looking to join our founding vendor cohort?
-          </span>
-          <Link
-            to="/vendor-register"
-            className="text-xs font-bold text-[#123B2A] hover:underline whitespace-nowrap shrink-0 flex items-center gap-1"
-          >
-            <span>Register Food Business</span>
-            <ArrowRight className="w-3 h-3" />
-          </Link>
         </div>
 
         {/* Registration Card */}
         <div className="bg-white rounded-2xl border border-[#123B2A]/10 shadow-sm p-6 sm:p-10 space-y-6">
           
           {apiError && (
-            <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3 text-xs sm:text-sm text-red-800">
+            <div role="alert" className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3 text-xs sm:text-sm text-red-800">
               <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <p className="font-bold">Submission Failed</p>
@@ -248,7 +237,7 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
                 }`}
               />
               {fieldErrors.name && (
-                <p className="text-xs text-red-600 font-medium">{fieldErrors.name}</p>
+                <p role="alert" className="text-xs text-red-600 font-medium">{fieldErrors.name}</p>
               )}
             </div>
 
@@ -306,7 +295,7 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
                   We'll only message you about the wá jẹun rollout in Ijebu Ode.
                 </p>
                 {fieldErrors.phone && (
-                  <p className="text-xs text-red-600 font-medium">{fieldErrors.phone}</p>
+                  <p role="alert" className="text-xs text-red-600 font-medium">{fieldErrors.phone}</p>
                 )}
               </div>
             ) : (
@@ -325,43 +314,28 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
                   }`}
                 />
                 {fieldErrors.email && (
-                  <p className="text-xs text-red-600 font-medium">{fieldErrors.email}</p>
+                  <p role="alert" className="text-xs text-red-600 font-medium">{fieldErrors.email}</p>
                 )}
               </div>
             )}
 
-            {/* 4. Neighborhood / Area */}
+            {/* 4. Market area and local neighborhood */}
             <div className="space-y-1.5">
-              <label htmlFor="customer-area" className="block text-xs font-bold uppercase tracking-wider text-[#123B2A]">
-                Neighborhood in Ijebu Ode <span className="text-red-500">*</span>
-              </label>
-              <select
-                id="customer-area"
-                value={neighborhood}
-                onChange={(e) => setNeighborhood(e.target.value)}
-                className={`w-full px-4 py-3 text-sm bg-slate-50 border rounded-xl text-[#20231F] focus:outline-none focus:ring-2 focus:ring-[#123B2A] focus:bg-white transition-all ${
-                  fieldErrors.neighborhood ? 'border-red-400 bg-red-50/50' : 'border-slate-200'
-                }`}
-              >
-                <option value="">Select your area...</option>
-                {IJEBU_ODE_AREAS.map((area) => (
-                  <option key={area} value={area}>{area}</option>
-                ))}
+              <label htmlFor="customer-market-area" className="block text-xs font-bold uppercase tracking-wider text-[#123B2A]">Market area <span className="text-red-500">*</span></label>
+              <select id="customer-market-area" value={marketArea} onChange={event => { setMarketArea(event.target.value); setNeighborhood(''); setCustomNeighborhood(''); }} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-[#20231F] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#123B2A]">
+                {MARKET_AREAS.map(area => <option key={area.id} value={area.id}>{area.label}</option>)}
               </select>
-
-              {neighborhood === 'Other Neighborhood in Ijebu Ode' && (
-                <input
-                  type="text"
-                  value={customNeighborhood}
-                  onChange={(e) => setCustomNeighborhood(e.target.value)}
-                  placeholder="Specify your neighborhood in Ijebu Ode"
-                  className="w-full mt-2 px-4 py-2.5 text-sm bg-white border border-slate-200 rounded-xl text-[#20231F] focus:outline-none focus:ring-2 focus:ring-[#123B2A]"
-                />
-              )}
-
-              {fieldErrors.neighborhood && (
-                <p className="text-xs text-red-600 font-medium">{fieldErrors.neighborhood}</p>
-              )}
+              {marketArea === 'ijebu-ode' ? <>
+                <label htmlFor="customer-area" className="mt-3 block text-xs font-bold uppercase tracking-wider text-[#123B2A]">Neighborhood in Ijebu Ode <span className="text-red-500">*</span></label>
+                <select id="customer-area" value={neighborhood} onChange={event => setNeighborhood(event.target.value)} className={`w-full rounded-xl border bg-slate-50 px-4 py-3 text-sm text-[#20231F] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#123B2A] ${fieldErrors.neighborhood ? 'border-red-400 bg-red-50/50' : 'border-slate-200'}`}>
+                  <option value="">Select your area...</option>{IJEBU_ODE_AREAS.map(area => <option key={area} value={area}>{area}</option>)}
+                </select>
+                {neighborhood === 'Other Neighborhood in Ijebu Ode' && <input type="text" value={customNeighborhood} onChange={event => setCustomNeighborhood(event.target.value)} placeholder="Specify your neighborhood in Ijebu Ode" className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-[#20231F] focus:outline-none focus:ring-2 focus:ring-[#123B2A]" />}
+              </> : <>
+                <label htmlFor="customer-ijagun-neighborhood" className="mt-3 block text-xs font-bold uppercase tracking-wider text-[#123B2A]">Neighborhood or locality in Ijagun <span className="text-red-500">*</span></label>
+                <input id="customer-ijagun-neighborhood" type="text" maxLength={150} value={neighborhood} onChange={event => setNeighborhood(event.target.value)} placeholder="Enter your neighborhood in Ijagun" className={`w-full rounded-xl border bg-slate-50 px-4 py-3 text-sm text-[#20231F] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#123B2A] ${fieldErrors.neighborhood ? 'border-red-400 bg-red-50/50' : 'border-slate-200'}`} />
+              </>}
+              {fieldErrors.neighborhood && <p role="alert" className="text-xs font-medium text-red-600">{fieldErrors.neighborhood}</p>}
             </div>
 
             {/* 5. Optional Favorite Food Categories */}
@@ -408,7 +382,7 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
                 </span>
               </label>
               {fieldErrors.consent && (
-                <p className="text-xs text-red-600 font-medium mt-1">{fieldErrors.consent}</p>
+                <p role="alert" className="text-xs text-red-600 font-medium mt-1">{fieldErrors.consent}</p>
               )}
             </div>
 

@@ -27,6 +27,7 @@ export interface CustomerInterestPayload {
   phone?: string;
   email?: string;
   neighborhood: string;
+  marketArea: string;
   favoriteCategories?: string[];
   consentAccepted: boolean;
 }
@@ -37,6 +38,10 @@ export interface VendorInterestPayload {
   phone: string;
   email?: string;
   neighborhood: string;
+  marketArea: string;
+  streetAddress: string;
+  nearbyLandmark: string;
+  deliveryCoverage: string[];
   businessType: BusinessType;
   currentOrderingMethods: OrderingMethod[];
   fulfillmentOptions: FulfillmentOption;

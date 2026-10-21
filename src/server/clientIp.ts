@@ -30,6 +30,16 @@ export function configureClientIpTrust(app: ExpressSettings, env: NodeJS.Process
     return;
   }
 
+  // Vercel documents that it overwrites X-Forwarded-For with the requester IP
+  // to prevent spoofing. Trust that platform-managed chain only in its Node
+  // runtime; do not carry this policy to other hosts. If an outer proxy is
+  // used, Vercel reports that proxy's IP unless its Trusted Proxy feature is
+  // configured, which may cause users behind it to share a rate-limit bucket.
+  if (env.VERCEL === '1') {
+    app.set('trust proxy', true);
+    return;
+  }
+
   const mode = env.WAJEUN_CLIENT_IP_MODE?.trim();
   const ranges = trustedProxyRanges(env.WAJEUN_TRUSTED_PROXY_CIDRS);
 

@@ -76,10 +76,11 @@ export const api = {
   /**
    * Search and filter eligible public food businesses.
    */
-  async getVendors(params?: { categories?: string[]; search?: string; neighborhood?: string; fulfillment?: 'pickup' | 'delivery' }) {
+  async getVendors(params?: { categories?: string[]; search?: string; marketArea?: string; neighborhood?: string; fulfillment?: 'pickup' | 'delivery' }) {
     const query = new URLSearchParams();
     if (params?.categories?.length) query.append('category', params.categories.join(','));
     if (params?.search) query.append('search', params.search);
+    if (params?.marketArea) query.append('marketArea', params.marketArea);
     if (params?.neighborhood) query.append('neighborhood', params.neighborhood);
     if (params?.fulfillment) query.append('fulfillment', params.fulfillment);
 
@@ -188,6 +189,7 @@ export const api = {
       applications: Array<{
         id: string;
         business_name: string;
+        market_area: string;
         neighborhood: string;
         business_type: string;
         status: string;
@@ -207,10 +209,10 @@ export const api = {
       cache: 'no-store'
     });
     const data = await readAdminJson<{ success: true; applications: Array<{
-      id: string; business_name: string; neighborhood: string; business_type: string; status: string; created_at: string;
+      id: string; business_name: string; market_area: string; street_address: string | null; nearby_landmark: string | null; delivery_coverage: string[]; neighborhood: string; business_type: string; status: string; created_at: string;
     }> }>(res, 'Could not load vendor applications.');
     return data as { success: true; applications: Array<{
-      id: string; business_name: string; neighborhood: string; business_type: string; status: string; created_at: string;
+      id: string; business_name: string; market_area: string; street_address: string | null; nearby_landmark: string | null; delivery_coverage: string[]; neighborhood: string; business_type: string; status: string; created_at: string;
     }> };
   },
 
@@ -350,11 +352,11 @@ export const api = {
 };
 
 export type VendorMenuItem = { id: string; name: string; description: string; price_ngn: number; category: string; image_url: string | null; available: boolean; created_at: string; updated_at: string };
-export type VendorBusiness = { id: string; business_name: string; contact_name: string; phone: string; email: string | null; neighborhood: string; business_type: string; fulfillment_options: string; delivery_fee_ngn: number | null; status: string; description: string | null; opening_hours: Record<string, { open: string; close: string; closed: boolean }> | null; accepting_orders: boolean; review_reason?: string | null; menu: VendorMenuItem[] };
+export type VendorBusiness = { id: string; business_name: string; contact_name: string; phone: string; email: string | null; market_area: string; neighborhood: string; street_address: string | null; nearby_landmark: string | null; delivery_coverage: string[]; business_type: string; fulfillment_options: string; delivery_fee_ngn: number | null; status: string; description: string | null; opening_hours: Record<string, { open: string; close: string; closed: boolean }> | null; accepting_orders: boolean; review_reason?: string | null; menu: VendorMenuItem[] };
 export type PublicMenuItem = Pick<VendorMenuItem, 'id' | 'name' | 'description' | 'price_ngn' | 'category' | 'image_url'> & { available: true };
-export type PublicVendorBusiness = Pick<VendorBusiness, 'id' | 'business_name' | 'neighborhood' | 'business_type' | 'fulfillment_options' | 'delivery_fee_ngn' | 'accepting_orders'> & { description: string; opening_hours: NonNullable<VendorBusiness['opening_hours']>; menu: PublicMenuItem[] };
+export type PublicVendorBusiness = Pick<VendorBusiness, 'id' | 'business_name' | 'market_area' | 'neighborhood' | 'street_address' | 'nearby_landmark' | 'delivery_coverage' | 'business_type' | 'fulfillment_options' | 'delivery_fee_ngn' | 'accepting_orders'> & { description: string; opening_hours: NonNullable<VendorBusiness['opening_hours']>; menu: PublicMenuItem[] };
 export type PublicVendorListResponse = { success: true; vendors: PublicVendorBusiness[]; total: number; status: 'empty' | 'available'; message: string };
-export type VendorProfileInput = { businessName: string; businessType: string; contactName: string; phone: string; email: string | null; description: string; neighborhood: string; openingHours: Record<string, { open: string; close: string; closed: boolean }>; fulfillmentOptions: string; deliveryFeeNgn: number | null };
+export type VendorProfileInput = { businessName: string; businessType: string; contactName: string; phone: string; email: string | null; description: string; marketArea: string; neighborhood: string; streetAddress: string; nearbyLandmark: string; deliveryCoverage: string[]; openingHours: Record<string, { open: string; close: string; closed: boolean }>; fulfillmentOptions: string; deliveryFeeNgn: number | null };
 export type VendorMenuInput = { name: string; description: string; priceNgn: number; category: string; imageUrl: string | null; available: boolean };
 export type CustomerOrderItem = { id: string; menu_item_id: string | null; item_name: string; quantity: number; unit_price_ngn: number; line_total_ngn: number };
 export type CustomerOrder = { id: string; order_reference: string; vendor_interest_id: string; customer_name: string; customer_phone: string; fulfillment_method: 'pickup' | 'vendor_delivery'; delivery_address: string | null; subtotal_ngn: number; delivery_fee_ngn: number | null; total_ngn: number; status: string; payment_status: string; is_test_order: boolean; created_at: string; updated_at: string; accepted_at: string | null; rejected_at: string | null; preparing_at: string | null; ready_at: string | null; out_for_delivery_at: string | null; completed_at: string | null; vendor?: { business_name: string; neighborhood: string }; items: CustomerOrderItem[] };

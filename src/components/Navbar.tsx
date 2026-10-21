@@ -6,9 +6,8 @@ import { isVerifiedMember } from '../auth/authRules';
 
 const publicLinks = [
   { label: 'Explore Food', to: '/explore' },
-  { label: 'How it works', to: '/#how-it-works' },
+  { label: 'Food categories', to: '/explore#food-categories' },
   { label: 'About', to: '/about' },
-  { label: 'Contact', to: '/legal?tab=contact' },
 ] as const;
 
 function isCurrentLink(pathname: string, search: string, hash: string, to: string) {

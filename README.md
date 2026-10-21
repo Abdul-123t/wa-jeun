@@ -92,23 +92,20 @@ The registration, vendor application, customer interest, contact, and checkout l
 - Set `WAJEUN_CLIENT_IP_MODE=direct` only after verifying the application socket receives the actual client connection and no proxy sits in front of it.
 - If a reverse proxy sits in front, set `WAJEUN_CLIENT_IP_MODE=trusted-proxy` and `WAJEUN_TRUSTED_PROXY_CIDRS` to the exact source IP/CIDR ranges observed for that proxy tier. Verify the host replaces or safely appends `X-Forwarded-For`, prevents direct access that bypasses the proxy, and that the configured ranges describe the complete network path. Never use `0.0.0.0/0`, `::/0`, or a guessed hop count.
 
-The repository does not establish the deployed host or proxy topology. The founder must verify the hosting network path and configure the matching mode before deployment; otherwise production startup intentionally fails. Counters are process-local, bounded in memory, and reset by time window or process restart. Multiple server instances do not share counters. If scaling beyond one instance, use a shared atomic store such as Redis with an atomic increment/expiry operation; add it only when multi-instance deployment is needed.
+On Vercel, the server recognizes the platform-provided `VERCEL=1` marker and trusts Express's forwarded chain because Vercel documents that it overwrites `X-Forwarded-For` with the requester IP to prevent spoofing. If another proxy is placed in front of Vercel, Vercel may report that proxy's address instead; users can then share a rate-limit bucket. Verify the actual domain path, and use Vercel's Trusted Proxy feature if the outer proxy must preserve client IPs. On other production hosts, startup still requires `WAJEUN_CLIENT_IP_MODE=direct` only when the socket peer is the client, or `trusted-proxy` with verified proxy CIDRs. Never use a guessed hop count or world-wide CIDR.
 
-### Testing the MVP Checklist:
-1. **Homepage:** Browse the hero section, click categories to jump to Explore Food, toggle FAQs.
-2. **Customer Registration:** Fill out the early access form (`/customer-register`), test WhatsApp vs. Email validation, select Ijebu Ode neighborhood, and submit. Notice the genuine reference ID and instant persistence.
-3. **Vendor Registration:** Submit an expression of interest for a food business (`/vendor-register`).
-4. **Explore Food:** Search for dishes, apply neighborhood and fulfillment filters, observe the truthful empty state explaining that onboarding is currently underway.
-5. **Contact Form:** Send a message via `/legal?tab=contact` and verify submission.
+Counters are process-local, bounded in memory, and reset by time window or process restart. Serverless deployments may run multiple instances that do not share counters. Before broad public traffic, use a shared atomic store such as Redis with atomic increment/expiry; this is not added until the deployment needs it.
+
+### Local MVP checks
+1. **Homepage:** Confirm the customer and vendor paths are clear and the ordering status is stated accurately.
+2. **Customer launch list:** Submit `/customer-register` with phone or email contact and check validation and confirmation.
+3. **Vendor application:** Sign in, submit `/vendor-register`, and confirm that approval is required before public ordering.
+4. **Explore:** Search and filter real vendor records. An empty database should show an empty state, not sample businesses.
+5. **Development test order:** Only use the development flow with an isolated development database. These are unpaid test orders, not real fulfillment requests.
+6. **Contact:** Submit a message via `/legal?tab=contact` in a local environment.
 
 ---
 
-## 6. Features Intentionally Reserved for Post-Onboarding
+## 6. Ordering and payment status
 
-The following capabilities are intentionally NOT simulated with fake data:
-- Fake restaurant menus or fabricated dish prices.
-- Dummy shopping cart or simulated checkout.
-- Mock payment confirmations or fake dispatch tracking.
-- Fabricated reviews, ratings, or sales metrics.
-
-These features will be deployed as verified food businesses in Ijebu Ode complete onboarding.
+The application includes a cart and an authenticated development-only test-order path. Development orders are marked unpaid and must not be fulfilled as real orders. **Production checkout is disabled.** No payment provider, payment verification/webhook, settlement, refund, or reconciliation flow is configured. Do not describe an order as paid until a trusted provider verification has been implemented and verified. Public menus and directory entries must come from real vendor records; do not use sample businesses, prices, ratings, or sales figures.

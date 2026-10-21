@@ -8,6 +8,21 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
+-- Active marketplaces are catalogued separately so additional supported areas
+-- can be enabled by adding a row and its application display configuration.
+CREATE TABLE IF NOT EXISTS public.market_areas (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    display_name TEXT NOT NULL,
+    active BOOLEAN NOT NULL DEFAULT TRUE
+);
+INSERT INTO public.market_areas (id, name, display_name) VALUES
+    ('ijebu-ode', 'Ijebu Ode', 'Ijebu Ode'),
+    ('ijagun', 'Ijagun', 'Ijagun (TASUED area)')
+ON CONFLICT (id) DO NOTHING;
+ALTER TABLE public.market_areas ENABLE ROW LEVEL SECURITY;
+REVOKE ALL PRIVILEGES ON TABLE public.market_areas FROM PUBLIC, anon, authenticated;
+
 -- ==============================================================================
 -- 2. Customer Early Access Registrations Table
 -- Stores genuine pre-launch signups from residents of Ijebu Ode.
@@ -19,6 +34,7 @@ CREATE TABLE IF NOT EXISTS public.customer_interest (
     phone VARCHAR(30),
     email VARCHAR(255),
     neighborhood VARCHAR(150) NOT NULL,
+    market_area TEXT NOT NULL DEFAULT 'ijebu-ode' REFERENCES public.market_areas(id),
     favorite_categories TEXT[] DEFAULT '{}',
     consent_accepted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
@@ -43,6 +59,8 @@ WHERE email IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_customer_neighborhood 
 ON public.customer_interest (neighborhood);
+CREATE INDEX IF NOT EXISTS idx_customer_market_area
+ON public.customer_interest (market_area);
 
 -- ==============================================================================
 -- 3. Food Business / Vendor Onboarding Interest Table
@@ -56,6 +74,10 @@ CREATE TABLE IF NOT EXISTS public.vendor_interest (
     phone VARCHAR(30) NOT NULL,
     email VARCHAR(255),
     neighborhood VARCHAR(150) NOT NULL,
+    market_area TEXT NOT NULL DEFAULT 'ijebu-ode' REFERENCES public.market_areas(id),
+    street_address VARCHAR(250),
+    nearby_landmark VARCHAR(250),
+    delivery_coverage TEXT[] NOT NULL DEFAULT '{}',
     business_type VARCHAR(50) NOT NULL CHECK (
         business_type IN (
             'restaurant',
@@ -89,6 +111,8 @@ CREATE TABLE IF NOT EXISTS public.vendor_interest (
 
 CREATE INDEX IF NOT EXISTS idx_vendor_business_name ON public.vendor_interest (business_name);
 CREATE INDEX IF NOT EXISTS idx_vendor_status ON public.vendor_interest (status);
+CREATE INDEX IF NOT EXISTS idx_vendor_market_area_status ON public.vendor_interest (market_area, status);
+CREATE INDEX IF NOT EXISTS idx_vendor_delivery_coverage ON public.vendor_interest USING GIN (delivery_coverage);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_vendor_unique_business ON public.vendor_interest (business_name, phone);
 
 -- ==============================================================================

@@ -3,28 +3,29 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Link } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { ShareModal } from './components/ShareModal';
-import { HomePage } from './pages/HomePage';
-import { ExplorePage } from './pages/ExplorePage';
-import { CustomerRegistrationPage } from './pages/CustomerRegistrationPage';
-import { VendorRegistrationPage } from './pages/VendorRegistrationPage';
-import { AboutPage } from './pages/AboutPage';
-import { LegalPage } from './pages/LegalPage';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { ProtectedRoute } from './auth/ProtectedRoute';
-import { AuthPage } from './pages/AuthPage';
-import { AccountPage } from './pages/AccountPage';
-import { AdminPage } from './pages/AdminPage';
-import { VendorDashboardPage } from './pages/VendorDashboardPage';
-import { PublicVendorMenuPage } from './pages/PublicVendorMenuPage';
 import { CartProvider } from './services/CartContext';
-import { CartPage } from './pages/CartPage';
-import { CustomerOrdersPage } from './pages/CustomerOrdersPage';
 import { getAdminAccessViewState } from './auth/authRules';
+
+const HomePage = lazy(() => import('./pages/HomePage').then(module => ({ default: module.HomePage })));
+const ExplorePage = lazy(() => import('./pages/ExplorePage').then(module => ({ default: module.ExplorePage })));
+const CustomerRegistrationPage = lazy(() => import('./pages/CustomerRegistrationPage').then(module => ({ default: module.CustomerRegistrationPage })));
+const VendorRegistrationPage = lazy(() => import('./pages/VendorRegistrationPage').then(module => ({ default: module.VendorRegistrationPage })));
+const AboutPage = lazy(() => import('./pages/AboutPage').then(module => ({ default: module.AboutPage })));
+const LegalPage = lazy(() => import('./pages/LegalPage').then(module => ({ default: module.LegalPage })));
+const AuthPage = lazy(() => import('./pages/AuthPage').then(module => ({ default: module.AuthPage })));
+const AccountPage = lazy(() => import('./pages/AccountPage').then(module => ({ default: module.AccountPage })));
+const AdminPage = lazy(() => import('./pages/AdminPage').then(module => ({ default: module.AdminPage })));
+const VendorDashboardPage = lazy(() => import('./pages/VendorDashboardPage').then(module => ({ default: module.VendorDashboardPage })));
+const PublicVendorMenuPage = lazy(() => import('./pages/PublicVendorMenuPage').then(module => ({ default: module.PublicVendorMenuPage })));
+const CartPage = lazy(() => import('./pages/CartPage').then(module => ({ default: module.CartPage })));
+const CustomerOrdersPage = lazy(() => import('./pages/CustomerOrdersPage').then(module => ({ default: module.CustomerOrdersPage })));
 
 // Scroll to top helper on route change with smooth hash navigation
 function ScrollToTop() {
@@ -38,7 +39,8 @@ function ScrollToTop() {
       const timer = setTimeout(() => {
         const element = document.getElementById(hash.replace('#', ''));
         if (element) {
-          element.scrollIntoView({ behavior: 'smooth' });
+          const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          element.scrollIntoView({ behavior: prefersReducedMotion ? 'instant' : 'smooth' });
         }
       }, 100);
       return () => clearTimeout(timer);
@@ -55,18 +57,18 @@ function RouteMetadata() {
     const mode = new URLSearchParams(location.search).get('mode');
     const tab = new URLSearchParams(location.search).get('tab');
     const privatePath = ['/account', '/vendor', '/admin', '/cart', '/orders'].some(path => location.pathname === path || location.pathname.startsWith(`${path}/`));
-    let title = 'wá jẹun — Your City. Your Food. | Ijebu Ode Food Marketplace';
-    let description = 'Discover food around Ijebu Ode with wá jẹun. Connect with local food businesses, explore authentic Nigerian meals, and join the launch list.';
+    let title = 'wá jẹun — Your City. Your Food. | Ijebu Ode and Ijagun Food Marketplace';
+    let description = 'Discover food around Ijebu Ode and Ijagun with wá jẹun. Connect with local food businesses, explore authentic Nigerian meals, and join the launch list.';
 
     if (location.pathname === '/explore') {
       title = 'Explore Local Food | wá jẹun';
-      description = 'Discover Ijebu Ode food businesses and Nigerian menus with wá jẹun, built in Ijebu for the local community.';
+      description = 'Discover Ijebu Ode and Ijagun food businesses and Nigerian menus with wá jẹun, built in Ijebu for the local community.';
     } else if (location.pathname === '/customer-register') {
       title = 'Join the Customer Launch List | wá jẹun';
       description = 'Join the wá jẹun customer launch list for updates on local food discovery and ordering in Ijebu Ode.';
     } else if (location.pathname === '/vendor-register') {
       title = 'Register Your Food Business | wá jẹun';
-      description = 'Register your restaurant, buka, grill, bakery, or food business in Ijebu Ode with wá jẹun.';
+      description = 'Register your restaurant, buka, grill, bakery, or food business in Ijebu Ode or Ijagun with wá jẹun.';
     } else if (location.pathname === '/about') {
       title = 'About wá jẹun | Local Food in Ijebu Ode';
       description = 'Learn about wá jẹun and our work connecting Ijebu Ode food lovers with local food businesses.';
@@ -125,7 +127,8 @@ export default function App() {
         <Navbar />
 
         {/* Main Content Pages */}
-        <main className="flex-1">
+        <div className="flex-1">
+          <Suspense fallback={<div role="status" className="mx-auto grid min-h-[45vh] max-w-7xl place-items-center px-4 text-sm font-medium text-[#123B2A]/70">Opening wá jẹun…</div>}>
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/explore" element={<ExplorePage />} />
@@ -146,7 +149,8 @@ export default function App() {
             <Route path="/admin/*" element={<ProtectedRoute><AdminRoute /></ProtectedRoute>} />
             <Route path="*" element={<HomePage />} />
           </Routes>
-        </main>
+          </Suspense>
+        </div>
 
         {/* Footer */}
         <Footer onOpenShare={() => setShareModalOpen(true)} />

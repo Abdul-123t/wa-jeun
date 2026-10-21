@@ -9,7 +9,7 @@ import {
   sanitizeText,
   redactPii
 } from '../src/server/validation';
-import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import express from 'express';
@@ -24,6 +24,7 @@ import { getPublicStoreAvailability } from '../src/services/storeHours';
 import { findCartPriceChanges } from '../src/services/cartPricing';
 import { canManageMenu, isVendorSellEligible, isVendorOwner, isTrustedMenuImageUrl, validateMenuItem, validateOpeningHours } from '../src/server/vendorRules';
 import { calculateOrderTotals, canTransitionOrder, createOrderRequestFingerprint, parseCheckoutLines, resolveAvailableOrderItems, validateCheckoutContact, validateFulfillment } from '../src/server/orderRules';
+import { EXPLORE_CATEGORY_API_CATEGORIES, readExploreFilters, updateExploreFilter } from '../src/utils/exploreFilters';
 
 // Keep this suite strictly local even when developer or CI environments contain
 // Supabase credentials. No test should make a network connection to a project.
@@ -81,7 +82,28 @@ async function runTests() {
   assert(findCartPriceChanges([cartPricingLine], [{ ...currentMenuItem, price_ngn: 2500 }]).length === 0, 'Cart price comparison does not warn when the current menu price is unchanged');
   const storefrontSource = readFileSync(new URL('../src/pages/PublicVendorMenuPage.tsx', import.meta.url), 'utf8');
   const cartPageSource = readFileSync(new URL('../src/pages/CartPage.tsx', import.meta.url), 'utf8');
-  assert(storefrontSource.includes('addItem(vendor, item)') && storefrontSource.includes('Clear cart and add') && storefrontSource.includes('Add to cart'), 'Public storefront can add items and explicitly handle a one-vendor cart conflict');
+  assert(storefrontSource.includes('addItem(vendor, item)') && storefrontSource.includes('Clear cart and add') && storefrontSource.includes('Add to test cart') && storefrontSource.includes('disabled={!availability.open || !orderingOpen}'), 'Development storefront preserves one-vendor cart behavior and production cannot add order items');
+  const exploreParams = new URLSearchParams('category=swallow-soups&search=amala&marketArea=ijagun&neighborhood=Molipa&fulfillment=pickup');
+  const exploreFilters = readExploreFilters(exploreParams);
+  assert(exploreFilters.category === 'swallow-soups' && exploreFilters.search === 'amala' && exploreFilters.marketArea === 'ijagun' && exploreFilters.neighborhood === 'Molipa' && exploreFilters.fulfillment === 'pickup' && EXPLORE_CATEGORY_API_CATEGORIES['swallow-soups'].join(',') === 'swallow,soup', 'Explore URL filters restore supported search, category, neighborhood, and fulfillment values');
+  const directoryDbSource = readFileSync(new URL('../src/server/db.ts', import.meta.url), 'utf8');
+  const marketAreaMigration = readFileSync(new URL('../docs/migrations/20261020_ijagun_market_area.sql', import.meta.url), 'utf8');
+  const ordersMigration = readFileSync(new URL('../docs/migrations/20261019_customer_orders.sql', import.meta.url), 'utf8');
+  assert(directoryDbSource.includes(".select('id, business_name, market_area, neighborhood, street_address, nearby_landmark, delivery_coverage, business_type, fulfillment_options, delivery_fee_ngn") && ['market_area', 'street_address', 'nearby_landmark', 'delivery_coverage'].every(column => marketAreaMigration.includes(column)) && ordersMigration.includes('ADD COLUMN IF NOT EXISTS delivery_fee_ngn'), 'Public directory schema requirements are covered by the Ijagun and customer-order migrations');
+  assert(directoryDbSource.includes("delivery_fee_ngn, description, opening_hours, accepting_orders, status'") && /ALTER TABLE public\.vendor_interest\s+ADD COLUMN IF NOT EXISTS delivery_fee_ngn NUMERIC\(10,2\)/.test(ordersMigration), 'Public directory delivery fee selection is backed by the customer-orders schema migration');
+  const explorePageSource = readFileSync(new URL('../src/pages/ExplorePage.tsx', import.meta.url), 'utf8');
+  assert(explorePageSource.includes('setReloadCount(value => value + 1)') && explorePageSource.includes('reloadCount])'), 'Explore retry increments a request dependency and preserves a new directory attempt');
+  const updatedExploreParams = updateExploreFilter(exploreParams, 'search', '  jollof rice  ');
+  assert(updatedExploreParams.get('search') === 'jollof rice' && updatedExploreParams.get('category') === 'swallow-soups' && updatedExploreParams.get('neighborhood') === 'Molipa' && updatedExploreParams.get('marketArea') === 'ijagun', 'Updating Explore search keeps the other active URL filters');
+  const invalidExploreFilters = readExploreFilters(new URLSearchParams('category=not-real&neighborhood=Nowhere&marketArea=oscohtech&fulfillment=drone'));
+  assert(invalidExploreFilters.category === 'all' && invalidExploreFilters.neighborhood === 'all' && invalidExploreFilters.marketArea === 'all' && invalidExploreFilters.fulfillment === 'all', 'Unsupported Explore query filters safely fall back to the full directory');
+  const caseInsensitiveExploreFilters = readExploreFilters(new URLSearchParams('category=RICE-DISHES&neighborhood=molipa&marketArea=Ijagun (TASUED area)'));
+  assert(caseInsensitiveExploreFilters.category === 'rice-dishes' && caseInsensitiveExploreFilters.neighborhood === 'Molipa' && caseInsensitiveExploreFilters.marketArea === 'ijagun', 'Shared Explore links resolve category and neighborhood casing to supported values');
+  const marketRegistrationSource = readFileSync(new URL('../src/pages/VendorRegistrationPage.tsx', import.meta.url), 'utf8');
+  const adminSource = readFileSync(new URL('../src/pages/AdminPage.tsx', import.meta.url), 'utf8');
+  const areaMigration = readFileSync(new URL('../docs/migrations/20261020_ijagun_market_area.sql', import.meta.url), 'utf8');
+  assert(marketRegistrationSource.includes('streetAddress') && marketRegistrationSource.includes('nearbyLandmark') && marketRegistrationSource.includes('deliveryCoverage') && adminSource.includes('Delivery coverage') && adminSource.includes('Market area'), 'Vendor registration captures real locations and admin review displays area and delivery claims');
+  assert(areaMigration.includes("DEFAULT 'ijebu-ode'") && areaMigration.includes("('ijagun', 'Ijagun', 'Ijagun (TASUED area)')") && !areaMigration.includes('OSCOHTECH') && !areaMigration.includes('Ilese-Ijebu'), 'Market area migration preserves existing Ijebu Ode assignments and enables only Ijagun');
   assert(cartPageSource.includes('I’ve reviewed the updated prices') && cartPageSource.includes('!priceChangesConfirmed'), 'Checkout requires confirmation after a refreshed menu price differs from the cart price');
 
   console.log('--- Suite: Rate Limiting and Proxy Trust ---');
@@ -132,14 +154,17 @@ async function runTests() {
   configureClientIpTrust({ set: (key, value) => { directSettings.push([key, value]); } }, { NODE_ENV: 'production', WAJEUN_CLIENT_IP_MODE: 'direct' });
   assert(directSettings[0]?.[0] === 'trust proxy' && directSettings[0]?.[1] === false, 'Direct production ingress ignores all forwarded headers');
   assert(isProductionRuntime({ VERCEL: '1' }) && isProductionRuntime({ VERCEL_ENV: 'preview' }) && !isProductionRuntime({ NODE_ENV: 'development' }), 'Vercel runtime markers consistently select production-safe server behavior');
+  const vercelSettings: Array<[string, unknown]> = [];
+  configureClientIpTrust({ set: (key, value) => { vercelSettings.push([key, value]); } }, { VERCEL: '1' });
+  assert(vercelSettings[0]?.[0] === 'trust proxy' && vercelSettings[0]?.[1] === true, 'Vercel runtime trusts only its platform-managed forwarded client-IP chain');
   let missingTopologyRejected = false;
   try { configureClientIpTrust({ set() { return this; } }, { NODE_ENV: 'production' }); }
   catch { missingTopologyRejected = true; }
   assert(missingTopologyRejected, 'Production startup fails closed when the proxy topology is not configured');
   let vercelTopologyRejected = false;
-  try { configureClientIpTrust({ set() { return this; } }, { VERCEL: '1' }); }
+  try { configureClientIpTrust({ set() { return this; } }, { VERCEL_ENV: 'preview' }); }
   catch { vercelTopologyRejected = true; }
-  assert(vercelTopologyRejected, 'Vercel runtimes without NODE_ENV still require an explicit verified proxy policy');
+  assert(vercelTopologyRejected, 'VERCEL_ENV alone does not enable proxy trust outside the Vercel runtime marker');
   let malformedProxyRejected = false;
   try { configureClientIpTrust({ set() { return this; } }, { NODE_ENV: 'production', WAJEUN_CLIENT_IP_MODE: 'trusted-proxy', WAJEUN_TRUSTED_PROXY_CIDRS: 'not-an-ip' }); }
   catch { malformedProxyRejected = true; }
@@ -161,7 +186,13 @@ async function runTests() {
   directRequest.app = directApp;
   directRequest.socket = { remoteAddress: '198.51.100.10' };
   directRequest.headers = { 'x-forwarded-for': '203.0.113.24' };
-  assert(proxyRequest.ip === '203.0.113.24' && directRequest.ip === '198.51.100.10', 'Express resolves client IPs from the configured trusted proxy chain and ignores XFF for direct ingress');
+  const vercelApp = express();
+  configureClientIpTrust(vercelApp, { VERCEL: '1' });
+  const vercelRequest = Object.create(express.request) as any;
+  vercelRequest.app = vercelApp;
+  vercelRequest.socket = { remoteAddress: '10.0.0.9' };
+  vercelRequest.headers = { 'x-forwarded-for': '198.51.100.77' };
+  assert(proxyRequest.ip === '203.0.113.24' && directRequest.ip === '198.51.100.10' && vercelRequest.ip === '198.51.100.77', 'Express resolves client IPs from verified proxy policy and Vercel ingress, while direct ingress ignores XFF');
   resetRateLimits();
 
   // Test 1: Phone Normalization (E.164 +234...)
@@ -212,7 +243,8 @@ async function runTests() {
     name: 'Olamide Adeleke',
     contact_method: 'phone',
     phone: uniqueCustomerPhone,
-    neighborhood: 'Molipa',
+    market_area: 'ijagun',
+    neighborhood: 'TASUED area',
     favorite_categories: ['Rice Dishes', 'Swallow and Soups'],
     consent_accepted: true
   });
@@ -221,6 +253,8 @@ async function runTests() {
     'Criterion 1: Valid customer submission returns success with record ID',
     custRes1.error
   );
+  const savedIjagunCustomer = JSON.parse(readFileSync(isolatedTestDb, 'utf8')).customers.find((customer: { phone: string }) => customer.phone === uniqueCustomerPhone);
+  assert(savedIjagunCustomer?.market_area === 'ijagun' && savedIjagunCustomer.neighborhood === 'TASUED area', 'Customer registrations persist the selected Ijagun area without overloading its locality');
 
   // Test 3: Duplicate Customer Submission Prevention
   console.log('\n--- Suite 3: Duplicate Handling & Consistency ---');
@@ -274,7 +308,11 @@ async function runTests() {
     business_name: 'Ijebu Pot Kitchen',
     contact_name: 'Mrs. Funke',
     phone: uniqueVendorPhone,
-    neighborhood: 'Folagbade',
+    market_area: 'ijagun',
+    neighborhood: 'TASUED area',
+    street_address: 'Campus Road 2',
+    nearby_landmark: 'TASUED gate',
+    delivery_coverage: ['ijagun'],
     business_type: 'local_buka',
     current_ordering_methods: ['walk_in', 'phone_calls'],
     fulfillment_options: 'pickup_only',
@@ -286,6 +324,8 @@ async function runTests() {
     'Criterion 2: Valid vendor submission saved as pending review with record ID',
     vendRes1.error
   );
+  const savedIjagunVendor = JSON.parse(readFileSync(isolatedTestDb, 'utf8')).vendors.find((vendor: { phone: string }) => vendor.phone === uniqueVendorPhone);
+  assert(savedIjagunVendor?.market_area === 'ijagun' && savedIjagunVendor.street_address === 'Campus Road 2' && savedIjagunVendor.nearby_landmark === 'TASUED gate' && savedIjagunVendor.delivery_coverage[0] === 'ijagun' && savedIjagunVendor.status === 'pending_review', 'Vendor applications preserve Ijagun location claims while remaining pending approval');
 
   // Duplicate vendor registration
   const vendResDup = await insertVendorInterest({
@@ -323,6 +363,25 @@ async function runTests() {
     vendorList.success && vendorList.total === 0 && vendorList.vendors.length === 0,
     'Local development directory returns a successful empty result without inventing listings'
   );
+  const directoryFixtureHours = Object.fromEntries(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(day => [day, { open: '09:00', close: '18:00', closed: false }]));
+  const directoryFixtureVendor = (id: string, marketArea: string, neighborhood: string, status = 'approved') => ({
+    id, business_name: `${marketArea} Test Kitchen`, market_area: marketArea, neighborhood,
+    street_address: 'Test Road', nearby_landmark: 'Test landmark', delivery_coverage: [],
+    business_type: 'restaurant', fulfillment_options: 'pickup_only', delivery_fee_ngn: null,
+    description: 'A local test kitchen serving freshly prepared meals.', opening_hours: directoryFixtureHours,
+    accepting_orders: true, status,
+    menu: [{ id: `${id}-menu`, vendor_interest_id: id, name: 'Test Rice', description: '', price_ngn: 2000, category: 'rice', image_url: null, available: true }]
+  });
+  writeFileSync(isolatedTestDb, JSON.stringify({ customers: [], contacts: [], vendors: [
+    directoryFixtureVendor('approved-ijebu', 'ijebu-ode', 'Molipa'),
+    directoryFixtureVendor('approved-ijagun', 'ijagun', 'TASUED area'),
+    directoryFixtureVendor('pending-ijagun', 'ijagun', 'TASUED area', 'pending_review')
+  ] }));
+  const populatedDirectory = await getVerifiedVendors({});
+  const ijebuDirectory = await getVerifiedVendors({ marketArea: 'ijebu-ode' });
+  const ijagunDirectory = await getVerifiedVendors({ marketArea: 'ijagun', neighborhood: 'tasued area' });
+  assert(populatedDirectory.success && populatedDirectory.total === 2 && populatedDirectory.vendors.every(vendor => vendor.id !== 'pending-ijagun') && ijebuDirectory.success && ijebuDirectory.vendors.length === 1 && ijebuDirectory.vendors[0].id === 'approved-ijebu' && ijagunDirectory.success && ijagunDirectory.vendors.length === 1 && ijagunDirectory.vendors[0].id === 'approved-ijagun', 'Local directory returns real-shaped approved fixtures only and filters Ijebu Ode, Ijagun, and neighborhood');
+  writeFileSync(isolatedTestDb, JSON.stringify({ customers: [], contacts: [], vendors: [] }));
 
   // Test 8: Public Data Privacy & Health Statistics
   console.log('\n--- Suite 8: Privacy & Health Check ---');
@@ -372,7 +431,7 @@ async function runTests() {
     cac_document_url: 'private-document'
   });
   assert(
-    Object.keys(publicVendor).sort().join(',') === 'business_name,business_type,delivery_fee_ngn,fulfillment_options,id,neighborhood' &&
+    Object.keys(publicVendor).sort().join(',') === 'business_name,business_type,delivery_coverage,delivery_fee_ngn,fulfillment_options,id,market_area,nearby_landmark,neighborhood,street_address' &&
       !JSON.stringify(publicVendor).includes('Private Contact') &&
       !JSON.stringify(publicVendor).includes('private-document'),
     'Public vendor projection omits private application fields and documents'
@@ -472,6 +531,14 @@ async function runTests() {
     serverSource.includes('export const app = express();') && serverSource.includes('export default app;'),
     'The shared Express application is exported for the Vercel API functions'
   );
+  const [vercelCatchAll, vercelApiRoot] = await Promise.all([
+    import('../api/[...path].ts'),
+    import('../api/index.ts')
+  ]);
+  assert(
+    vercelCatchAll.default === app && vercelApiRoot.default === app,
+    'Both Vercel entrypoints resolve to the same Express application at runtime'
+  );
   assert(vercelConfig.buildCommand === 'npm run build' && vercelConfig.outputDirectory === 'dist/client' && viteConfigSource.includes("outDir: 'dist/client'"), 'Vercel publishes the Vite build output directory');
   assert(vercelConfig.rewrites.some(rule => rule.destination === '/index.html' && rule.source.includes('(?!api')) && vercelConfig.rewrites.some(rule => rule.source === '/'), 'SPA fallback serves the root and excludes API paths');
   const vendorDashboardRouteLayer = (app as any)._router.stack.find((layer: any) =>
@@ -507,7 +574,7 @@ async function runTests() {
   });
   if (vendorApplicationLayer) {
     const result = await invokeHandler(vendorApplicationLayer.route.stack[vendorApplicationLayer.route.stack.length - 1].handle, {
-      get: () => undefined, params: {}, query: {}, body: { businessName: 'Test Kitchen', contactName: 'Test Owner', phone: '08012345678', neighborhood: 'Ijebu Ode', businessType: 'restaurant', fulfillmentOptions: 'pickup_only', currentOrderingMethods: ['walk_in'], consentAccepted: true }
+      get: () => undefined, params: {}, query: {}, body: { businessName: 'Test Kitchen', contactName: 'Test Owner', phone: '08012345678', marketArea: 'ijagun', neighborhood: 'TASUED area', streetAddress: 'Campus Road 2', nearbyLandmark: 'TASUED gate', deliveryCoverage: [], businessType: 'restaurant', fulfillmentOptions: 'pickup_only', currentOrderingMethods: ['walk_in'], consentAccepted: true }
     });
     assert(result.status === 401 && result.contentType === 'application/json', 'Vendor application cannot be submitted anonymously or left unlinked to a verified owner');
   }
@@ -517,6 +584,8 @@ async function runTests() {
   if (publicVendorsRouteLayer) {
     const result = await invokeHandler(publicVendorsRouteLayer.route.stack[0].handle, { query: {}, params: {} });
     assert(result.status === 200 && result.body.success === true && result.body.status === 'empty' && result.body.vendors.length === 0, 'Public vendors API distinguishes a successful empty directory');
+    const unsupportedMarket = await invokeHandler(publicVendorsRouteLayer.route.stack[0].handle, { query: { marketArea: 'oscohtech' }, params: {} });
+    assert(unsupportedMarket.status === 400, 'Public directory rejects market areas that are not active');
   }
   assert(readFileSync(new URL('../src/server/db.ts', import.meta.url), 'utf8').includes(".eq('customer_user_id', userId)"), 'Customer order history query is scoped to the verified customer ID');
   {
@@ -602,7 +671,14 @@ async function runTests() {
   const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
   assert(navbarSource.includes('isVerifiedMember(user.id, adminUserId)') && navbarSource.includes('isVerifiedMember(user.id, vendorUserId)'), 'Navigation links depend on server-verified membership for the current user');
   assert((navbarSource.match(/to="\/vendor-register"/g)?.length || 0) >= 2 && (navbarSource.match(/to="\/customer-register"/g)?.length || 0) >= 2 && footerSource.includes('/customer-register') && footerSource.includes('/vendor-register'), 'Separate customer and vendor onboarding links remain in desktop/mobile navigation and the shared footer');
-  assert(homeSource.includes('Customer ordering is not available yet') && homeSource.includes('to="/explore"') && !homeSource.includes('popularItems') && vendorRegistrationSource.includes('Approval is required before your storefront can accept orders.'), 'Concise public pages preserve truthful ordering status and vendor approval expectations');
+  assert(homeSource.includes('Ordering has not launched yet') && homeSource.includes('api.getVendors()') && homeSource.includes('What are you in the mood for?') && !homeSource.includes('popularItems') && vendorRegistrationSource.includes('Approval is required before your storefront can accept orders.'), 'Homepage leads with real discovery, functional search, and truthful ordering status');
+  const optimizedCategoryImages = [
+    'category_rice_dishes_1792169660991-optimized.jpg', 'category_swallow_soups_1792169661810-optimized.jpg',
+    'category_local_bukameals_1792169662615-optimized.jpg', 'category_street_food_1792174171995-optimized.jpg',
+    'category_grills_shawarma_1792169662635-optimized.jpg', 'category_fast_food_1792174171687-optimized.jpg',
+    'category_snacks_pastries_1792174173242-optimized.jpg', 'category_drinks_beverages_1792174172917-optimized.jpg'
+  ];
+  assert(optimizedCategoryImages.every(file => existsSync(new URL(`../src/assets/images/${file}`, import.meta.url)) && statSync(new URL(`../src/assets/images/${file}`, import.meta.url)).size < 220_000), 'Food category art uses resized, compressed images below 220 kB');
   assert(customerRegistrationSource.includes('htmlFor="customer-name"') && customerRegistrationSource.includes('role="alert"') && vendorRegistrationSource.includes('htmlFor="vendor-biz-name"') && vendorRegistrationSource.includes('role="alert"') && vendorRegistrationSource.includes('Sign in to submit application'), 'Customer and vendor forms retain labelled fields, announced errors, and authenticated vendor submission');
   assert(appSource.includes('<AdminRoute />') && appSource.includes('getAdminAccessViewState({ permissionsLoading, userId: user?.id, adminUserId'), 'Direct /admin navigation checks verified membership before mounting admin content');
   assert(appSource.includes('adminPermissionError') && appSource.includes('retryPermissionCheck'), 'Admin permission API failures are visible and can be retried instead of being shown as a false denial');
@@ -642,15 +718,15 @@ async function runTests() {
   assert(canManageMenu('approved') && !canManageMenu('pending_review') && !canManageMenu('declined') && !canManageMenu('suspended'), 'Menu CRUD permissions require approved status');
   assert(validateOpeningHours(completeHours) && !validateOpeningHours({ monday: { open: 'late', close: '18:00', closed: false } }), 'Storefront opening hours require valid entries for every weekday');
   assert(isVendorSellEligible(eligibleStore) && !isVendorSellEligible({ ...eligibleStore, status: 'pending_review' }) && !isVendorSellEligible({ ...eligibleStore, status: 'declined' }) && !isVendorSellEligible({ ...eligibleStore, status: 'suspended' }) && !isVendorSellEligible({ ...eligibleStore, business_name: ' ' }) && !isVendorSellEligible({ ...eligibleStore, available_menu_items: 0 }) && !isVendorSellEligible({ ...eligibleStore, accepting_orders: false }), 'Public orderability requires approval, complete storefront and hours, an available item, and accepting orders');
-  const publicFixture = { id: 'v1', business_name: 'Test Kitchen', neighborhood: 'Molipa', business_type: 'restaurant', fulfillment_options: 'pickup_and_delivery', delivery_fee_ngn: null, description: 'Fresh meals prepared daily.', opening_hours: completeHours, accepting_orders: true, menu: [{ id: 'm1', name: 'Jollof Rice', description: '', price_ngn: 2500, category: 'rice', image_url: null, available: true as const }] };
+  const publicFixture = { id: 'v1', business_name: 'Test Kitchen', market_area: 'ijagun', neighborhood: 'TASUED area', street_address: 'Campus Road', nearby_landmark: 'TASUED gate', delivery_coverage: ['ijagun'], business_type: 'restaurant', fulfillment_options: 'pickup_and_delivery', delivery_fee_ngn: null, description: 'Fresh meals prepared daily.', opening_hours: completeHours, accepting_orders: true, menu: [{ id: 'm1', name: 'Jollof Rice', description: '', price_ngn: 2500, category: 'rice', image_url: null, available: true as const }] };
   const projectedListing = toPublicVendorListing({ ...publicFixture, phone: '+2348012345678', email: 'private@example.test', message: 'private note', status: 'approved', user_id: 'private-user' }, [{ ...publicFixture.menu[0], vendor_interest_id: 'v1', phone: 'private' }]);
   assert(!JSON.stringify(projectedListing).includes('private@example.test') && !JSON.stringify(projectedListing).includes('private note') && !('status' in projectedListing), 'Public restaurant data excludes application contacts, review status, account IDs, and private messages');
   assert(projectedListing.fulfillment_options === 'pickup_only' && matchesPublicVendorFilters(projectedListing, { fulfillment: 'pickup' }) && !matchesPublicVendorFilters(projectedListing, { fulfillment: 'delivery' }), 'A vendor with no configured delivery fee is shown as pickup only and excluded from delivery results');
   assert(toPublicVendor({ ...publicFixture, fulfillment_options: 'vendor_delivery', delivery_fee_ngn: null }).delivery_fee_ngn === null && !matchesPublicVendorFilters({ ...publicFixture, fulfillment_options: 'vendor_delivery', delivery_fee_ngn: null }, { fulfillment: 'delivery' }), 'Delivery without a fixed fee is not advertised as available');
   const projectedItem = toPublicMenuItem({ id: 'm2', name: 'Amala', description: 'With ewedu', price_ngn: '3000', category: 'swallow', image_url: 'https://attacker.example/meal.jpg', available: true, vendor_interest_id: 'private-vendor', updated_at: 'private' });
   assert(Boolean(projectedItem && Object.keys(projectedItem).sort().join(',') === 'available,category,description,id,image_url,name,price_ngn' && projectedItem.image_url === null && projectedItem.price_ngn === 3000), 'Public menu item projection allowlists fields, normalizes NGN price, and rejects untrusted images');
-  assert(matchesPublicVendorFilters(publicFixture, { search: 'jollof' }) && matchesPublicVendorFilters(publicFixture, { search: 'test kitchen' }) && !matchesPublicVendorFilters(publicFixture, { search: 'amala' }), 'Public search matches persisted business and available menu item names');
-  assert(matchesPublicVendorFilters(publicFixture, { categories: ['rice'] }) && !matchesPublicVendorFilters(publicFixture, { categories: ['snacks'] }) && matchesPublicVendorFilters(publicFixture, { neighborhood: 'molipa' }) && matchesPublicVendorFilters({ ...publicFixture, delivery_fee_ngn: 850 }, { fulfillment: 'delivery' }), 'Public category, neighborhood, and configured delivery filters affect the returned results');
+  assert(matchesPublicVendorFilters(publicFixture, { search: 'ijagun' }) && matchesPublicVendorFilters(publicFixture, { search: 'jollof' }) && matchesPublicVendorFilters(publicFixture, { search: 'test kitchen' }) && !matchesPublicVendorFilters(publicFixture, { search: 'amala' }), 'Public search matches persisted business and available menu item names');
+  assert(matchesPublicVendorFilters(publicFixture, { categories: ['rice'] }) && !matchesPublicVendorFilters(publicFixture, { categories: ['snacks'] }) && matchesPublicVendorFilters(publicFixture, { neighborhood: 'tasued area' }) && matchesPublicVendorFilters({ ...publicFixture, delivery_fee_ngn: 850 }, { fulfillment: 'delivery' }) && matchesPublicVendorFilters({ ...publicFixture, delivery_fee_ngn: 850 }, { marketArea: 'ijagun', fulfillment: 'delivery' }) && !matchesPublicVendorFilters({ ...publicFixture, market_area: 'ijebu-ode', delivery_coverage: [], delivery_fee_ngn: 850 }, { marketArea: 'ijagun', fulfillment: 'delivery' }), 'Public category, neighborhood, and configured delivery filters affect the returned results');
   const menuId = '00000000-0000-4000-8000-000000000001';
   const cartParse = parseCheckoutLines([{ menuItemId: menuId, quantity: 2, expectedPriceNgn: 1200, priceNgn: 1, vendorId: 'spoofed' }]);
   assert(cartParse.success && !('priceNgn' in cartParse.lines[0]) && !('vendorId' in cartParse.lines[0]), 'Checkout parser discards browser-supplied price and vendor fields');
@@ -736,10 +812,10 @@ async function runTests() {
     assert(nonJsonError === 'The service response could not be read. Please retry.', 'Admin client handles non-JSON service responses without exposing proxy details');
 
     globalThis.fetch = async input => {
-      assert(String(input).includes('search=jollof') && String(input).includes('neighborhood=Molipa') && String(input).includes('fulfillment=pickup'), 'Explore API sends supported search and filter values to the backend');
+      assert(String(input).includes('search=jollof') && String(input).includes('marketArea=ijagun') && String(input).includes('neighborhood=Molipa') && String(input).includes('fulfillment=pickup'), 'Explore API sends supported search and filter values to the backend');
       return new Response(JSON.stringify({ success: true, vendors: [], total: 0, status: 'empty', message: 'No matching businesses.' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     };
-    const emptyDirectory = await api.getVendors({ search: 'jollof', neighborhood: 'Molipa', fulfillment: 'pickup' });
+    const emptyDirectory = await api.getVendors({ search: 'jollof', marketArea: 'ijagun', neighborhood: 'Molipa', fulfillment: 'pickup' });
     assert(emptyDirectory.status === 'empty' && emptyDirectory.vendors.length === 0, 'A successful empty directory response remains distinct from an API error');
 
     globalThis.fetch = async () => new Response(JSON.stringify({ success: false, error: 'Food directory unavailable.' }), { status: 503, headers: { 'Content-Type': 'application/json' } });

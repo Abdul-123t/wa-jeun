@@ -44,6 +44,7 @@ import { authorizeAdminHeader, parseBearerAuthorization } from './src/server/aut
 import { FULFILLMENT_OPTIONS, MENU_CATEGORIES, isTrustedMenuImageUrl, validateMenuItem, validateOpeningHours } from './src/server/vendorRules';
 import { createOrderRequestFingerprint, parseCheckoutLines, validateCheckoutContact, validateFulfillment } from './src/server/orderRules';
 import { isProductionRuntime } from './src/server/runtimeMode';
+import { isMarketAreaId } from './src/data/marketAreas';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -169,7 +170,7 @@ app.get('/api/admin/vendor-applications', asyncRoute(async (req: Request, res: R
   const search = typeof req.query.search === 'string' ? sanitizeText(req.query.search, 100).toLocaleLowerCase() : '';
   const applications = (result.data || []).filter(application =>
     (status === 'all' || application.status === status) &&
-    (!search || `${application.business_name} ${application.neighborhood} ${application.business_type}`.toLocaleLowerCase().includes(search))
+    (!search || `${application.business_name} ${application.market_area} ${application.neighborhood} ${application.street_address || ''} ${application.nearby_landmark || ''} ${application.business_type}`.toLocaleLowerCase().includes(search))
   );
   return res.json({ success: true, applications });
 }));
@@ -187,17 +188,21 @@ app.get('/api/vendor/dashboard', asyncRoute(async (req: Request, res: Response) 
 app.patch('/api/vendor/businesses/:businessId/profile', asyncRoute(async (req: Request, res: Response) => {
   const authorization = await verifiedVendorUser(req);
   if (!authorization.userId) return res.status(authorization.statusCode || 401).json({ success: false, error: authorization.error });
-  const { businessName, businessType, contactName, phone, email, description, neighborhood, openingHours, fulfillmentOptions, deliveryFeeNgn } = req.body || {};
+  const { businessName, businessType, contactName, phone, email, description, marketArea, neighborhood, streetAddress, nearbyLandmark, deliveryCoverage, openingHours, fulfillmentOptions, deliveryFeeNgn } = req.body || {};
   const cleanBusinessName = sanitizeText(businessName, 200);
   const cleanContactName = sanitizeText(contactName, 150);
   const normalizedPhone = normalizeNigerianPhone(phone);
   const normalizedEmail = email ? normalizeEmail(email) : null;
   const cleanDescription = sanitizeText(description, 1000);
   const cleanNeighborhood = sanitizeText(neighborhood, 150);
-  if (cleanBusinessName.length < 2 || !VALID_BUSINESS_TYPES.includes(businessType) || cleanContactName.length < 2 || !normalizedPhone || (email && !normalizedEmail) || cleanDescription.length < 20 || !cleanNeighborhood || !validateOpeningHours(openingHours) || !FULFILLMENT_OPTIONS.includes(fulfillmentOptions) || (deliveryFeeNgn !== null && deliveryFeeNgn !== undefined && (typeof deliveryFeeNgn !== 'number' || !Number.isFinite(deliveryFeeNgn) || deliveryFeeNgn < 0 || deliveryFeeNgn > 10000000 || Math.round(deliveryFeeNgn * 100) !== deliveryFeeNgn * 100))) {
+  const cleanMarketArea = isMarketAreaId(marketArea) ? marketArea : null;
+  const cleanStreetAddress = sanitizeText(streetAddress, 250);
+  const cleanNearbyLandmark = sanitizeText(nearbyLandmark, 250);
+  const cleanDeliveryCoverage = Array.isArray(deliveryCoverage) && deliveryCoverage.every(isMarketAreaId) ? [...new Set(deliveryCoverage)] : null;
+  if (cleanBusinessName.length < 2 || !VALID_BUSINESS_TYPES.includes(businessType) || cleanContactName.length < 2 || !normalizedPhone || (email && !normalizedEmail) || cleanDescription.length < 20 || !cleanMarketArea || !cleanNeighborhood || cleanStreetAddress.length < 3 || cleanNearbyLandmark.length < 2 || cleanDeliveryCoverage === null || (['vendor_delivery', 'pickup_and_delivery'].includes(fulfillmentOptions) && cleanDeliveryCoverage.length === 0) || !validateOpeningHours(openingHours) || !FULFILLMENT_OPTIONS.includes(fulfillmentOptions) || (deliveryFeeNgn !== null && deliveryFeeNgn !== undefined && (typeof deliveryFeeNgn !== 'number' || !Number.isFinite(deliveryFeeNgn) || deliveryFeeNgn < 0 || deliveryFeeNgn > 10000000 || Math.round(deliveryFeeNgn * 100) !== deliveryFeeNgn * 100))) {
     return res.status(400).json({ success: false, error: 'Check the business name, category, contact details, description, neighborhood, hours, fulfillment option and delivery fee.' });
   }
-  const result = await updateVendorProfile(authorization.userId, req.params.businessId, { businessName: cleanBusinessName, businessType, contactName: cleanContactName, phone: normalizedPhone, email: normalizedEmail, description: cleanDescription, neighborhood: cleanNeighborhood, openingHours, fulfillmentOptions, deliveryFeeNgn: deliveryFeeNgn ?? null });
+  const result = await updateVendorProfile(authorization.userId, req.params.businessId, { businessName: cleanBusinessName, businessType, contactName: cleanContactName, phone: normalizedPhone, email: normalizedEmail, description: cleanDescription, marketArea: cleanMarketArea, neighborhood: cleanNeighborhood, streetAddress: cleanStreetAddress, nearbyLandmark: cleanNearbyLandmark, deliveryCoverage: cleanDeliveryCoverage, openingHours, fulfillmentOptions, deliveryFeeNgn: deliveryFeeNgn ?? null });
   if (!result.success) return res.status(result.statusCode || 503).json({ success: false, error: result.error });
   return res.json({ success: true, business: result.data });
 }));
@@ -366,7 +371,7 @@ app.post('/api/admin/vendor-applications/:id/review', asyncRoute(async (req: Req
 // (0 verified vendors at pre-launch; no fictional businesses)
 app.get('/api/vendors', async (req: Request, res: Response) => {
   res.set('Cache-Control', 'no-store');
-  const { category, search, neighborhood, fulfillment } = req.query;
+  const { category, search, marketArea, neighborhood, fulfillment } = req.query;
 
   try {
     const filterCats = category && typeof category === 'string'
@@ -376,6 +381,10 @@ app.get('/api/vendors', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'Choose a supported food category.' });
     }
     const filterSearch = search && typeof search === 'string' ? sanitizeText(search, 100) : undefined;
+    if (marketArea && (typeof marketArea !== 'string' || !isMarketAreaId(marketArea))) {
+      return res.status(400).json({ success: false, error: 'Choose a supported market area.' });
+    }
+    const filterMarketArea = typeof marketArea === 'string' ? marketArea : undefined;
     const filterNeighborhood = neighborhood && typeof neighborhood === 'string' ? sanitizeText(neighborhood, 150) : undefined;
     const filterFulfillment = fulfillment === 'pickup' || fulfillment === 'delivery' ? fulfillment : undefined;
     if (fulfillment && (typeof fulfillment !== 'string' || !['pickup', 'delivery'].includes(fulfillment))) {
@@ -385,6 +394,7 @@ app.get('/api/vendors', async (req: Request, res: Response) => {
     const result = await getVerifiedVendors({
       categories: filterCats,
       search: filterSearch,
+      marketArea: filterMarketArea,
       neighborhood: filterNeighborhood,
       fulfillment: filterFulfillment
     });
@@ -400,13 +410,14 @@ app.get('/api/vendors', async (req: Request, res: Response) => {
       filtersApplied: {
         categories: filterCats,
         search: filterSearch || null,
+        marketArea: filterMarketArea || null,
         neighborhood: filterNeighborhood || null,
         fulfillment: filterFulfillment || null
       },
       status: result.total === 0 ? 'empty' : 'available',
       message: result.total === 0
         ? 'No approved food businesses match those filters right now.'
-        : 'Displaying verified food businesses in Ijebu Ode.'
+        : 'Displaying approved food businesses serving the selected area.'
     });
   } catch {
     console.error('[WA JEUN API] GET /api/vendors failed.', { status: 503, category: 'unexpected_route_error' });
@@ -450,6 +461,7 @@ app.post('/api/interest/customer', customerInterestLimiter, async (req: Request,
       contactMethod,
       phone,
       email,
+      marketArea,
       neighborhood,
       favoriteCategories,
       consentAccepted
@@ -497,6 +509,8 @@ app.post('/api/interest/customer', customerInterestLimiter, async (req: Request,
     }
 
     // D. Neighborhood Validation
+    if (marketArea !== undefined && !isMarketAreaId(marketArea)) return res.status(400).json({ success: false, error: 'Please choose Ijebu Ode or Ijagun.' });
+    const cleanMarketArea = isMarketAreaId(marketArea) ? marketArea : 'ijebu-ode';
     const cleanNeighborhood = sanitizeText(neighborhood, 150);
     if (!cleanNeighborhood || cleanNeighborhood.length < 2) {
       return res.status(400).json({
@@ -525,6 +539,7 @@ app.post('/api/interest/customer', customerInterestLimiter, async (req: Request,
       phone: normalizedPhone,
       email: normalizedEmail,
       neighborhood: cleanNeighborhood,
+      market_area: cleanMarketArea,
       favorite_categories: cleanCategories,
       consent_accepted: true
     });
@@ -538,7 +553,7 @@ app.post('/api/interest/customer', customerInterestLimiter, async (req: Request,
 
     return res.status(201).json({
       success: true,
-      message: 'Thank you for registering your interest! We will contact you when food discovery and ordering go live in Ijebu Ode.',
+      message: 'Thank you for registering your interest! We will contact you when food discovery and ordering go live in your selected area.',
       registrationId: dbResult.data?.id
     });
   } catch (err: any) {
@@ -558,7 +573,11 @@ app.post('/api/interest/vendor', vendorApplicationLimiter, async (req: Request, 
       contactName,
       phone,
       email,
+      marketArea,
       neighborhood,
+      streetAddress,
+      nearbyLandmark,
+      deliveryCoverage,
       businessType,
       currentOrderingMethods,
       fulfillmentOptions,
@@ -601,11 +620,15 @@ app.post('/api/interest/vendor', vendorApplicationLimiter, async (req: Request, 
       }
     }
 
+    const cleanMarketArea = isMarketAreaId(marketArea) ? marketArea : null;
+    const cleanStreetAddress = sanitizeText(streetAddress, 250);
+    const cleanNearbyLandmark = sanitizeText(nearbyLandmark, 250);
+    const cleanDeliveryCoverage = Array.isArray(deliveryCoverage) && deliveryCoverage.every(isMarketAreaId) ? [...new Set(deliveryCoverage)] : null;
     const cleanNeighborhood = sanitizeText(neighborhood, 150);
     if (!cleanNeighborhood || cleanNeighborhood.length < 2) {
       return res.status(400).json({
         success: false,
-        error: 'Please enter your business location or neighborhood in Ijebu Ode.'
+        error: 'Please enter your business location and choose a supported market area.'
       });
     }
 
@@ -621,6 +644,10 @@ app.post('/api/interest/vendor', vendorApplicationLimiter, async (req: Request, 
         success: false,
         error: 'Please specify a valid fulfillment capability.'
       });
+    }
+
+    if (!cleanMarketArea || cleanStreetAddress.length < 3 || cleanNearbyLandmark.length < 2 || !cleanDeliveryCoverage || (['vendor_delivery', 'pickup_and_delivery'].includes(fulfillmentOptions) && cleanDeliveryCoverage.length === 0)) {
+      return res.status(400).json({ success: false, error: 'Provide a supported area, street, nearby landmark, and your actual delivery coverage.' });
     }
 
     // Clean ordering methods array
@@ -657,7 +684,11 @@ app.post('/api/interest/vendor', vendorApplicationLimiter, async (req: Request, 
       contact_name: cleanContact,
       phone: normalizedPhone,
       email: normalizedEmail,
+      market_area: cleanMarketArea,
       neighborhood: cleanNeighborhood,
+      street_address: cleanStreetAddress,
+      nearby_landmark: cleanNearbyLandmark,
+      delivery_coverage: cleanDeliveryCoverage,
       business_type: businessType,
       current_ordering_methods: methods,
       fulfillment_options: fulfillmentOptions,
@@ -674,7 +705,7 @@ app.post('/api/interest/vendor', vendorApplicationLimiter, async (req: Request, 
 
     return res.status(201).json({
       success: true,
-      message: 'Your food business interest has been recorded! Our onboarding team will contact you directly to discuss the next steps for joining the first cohort in Ijebu Ode.',
+      message: 'Your food business interest has been recorded! Our onboarding team will contact you directly to discuss the next steps for joining the first cohort in your selected area.',
       registrationId: dbResult.data?.id
     });
   } catch (err: any) {
