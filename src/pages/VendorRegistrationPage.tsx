@@ -19,7 +19,7 @@ import { useAuth } from '../auth/AuthContext';
 import { MARKET_AREAS } from '../data/marketAreas';
 
 export const VendorRegistrationPage: React.FC = () => {
-  const { user, session, loading: authLoading } = useAuth();
+  const { user, session, loading: authLoading, retryPermissionCheck } = useAuth();
   const [businessName, setBusinessName] = useState('');
   const [contactName, setContactName] = useState('');
   const [phone, setPhone] = useState('');
@@ -125,6 +125,7 @@ export const VendorRegistrationPage: React.FC = () => {
       }, session.access_token);
 
       if (res.success) {
+        retryPermissionCheck();
         setSuccessData({
           registrationId: res.registrationId,
           message: res.message || 'Your business interest has been recorded.'
@@ -351,7 +352,7 @@ export const VendorRegistrationPage: React.FC = () => {
                   <option value="">Select neighborhood...</option>{IJEBU_ODE_AREAS.map(area => <option key={area} value={area}>{area}</option>)}
                 </select>
               </label> : <label htmlFor="vendor-location-ijagun" className="block text-xs font-semibold text-[#123B2A]">Neighborhood or locality in Ijagun <span className="text-red-500">*</span>
-                <input id="vendor-location-ijagun" value={neighborhood} onChange={event => setNeighborhood(event.target.value)} maxLength={150} placeholder="e.g. around TASUED" className={`mt-1 w-full rounded-xl border bg-slate-50 px-4 py-3 text-sm font-normal text-[#20231F] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#123B2A] ${fieldErrors.neighborhood ? 'border-red-400' : 'border-slate-200'}`} />
+                <input id="vendor-location-ijagun" value={neighborhood} onChange={event => setNeighborhood(event.target.value)} maxLength={150} placeholder="e.g. around TASFUED" className={`mt-1 w-full rounded-xl border bg-slate-50 px-4 py-3 text-sm font-normal text-[#20231F] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#123B2A] ${fieldErrors.neighborhood ? 'border-red-400' : 'border-slate-200'}`} />
               </label>}
               {marketArea === 'ijebu-ode' && neighborhood === 'Other Neighborhood in Ijebu Ode' && <input type="text" value={customNeighborhood} onChange={event => setCustomNeighborhood(event.target.value)} placeholder="Type your neighborhood name in Ijebu Ode" className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-[#20231F] focus:outline-none focus:ring-2 focus:ring-[#123B2A]" />}
               {fieldErrors.neighborhood && <p role="alert" className="text-xs font-medium text-red-600">{fieldErrors.neighborhood}</p>}

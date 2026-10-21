@@ -13,6 +13,17 @@ export class ApiError extends Error {
   }
 }
 
+export type VendorApplication = {
+  id: string;
+  business_name: string;
+  market_area: string;
+  neighborhood: string;
+  business_type: string;
+  status: string;
+  created_at: string;
+  review_reason: string | null;
+};
+
 function logApiFailure(endpoint: string, error: unknown): void {
   const status = error instanceof ApiError ? error.status : 0;
   const category = error instanceof ApiError ? error.category : error instanceof TypeError ? 'network_error' : 'unexpected_response';
@@ -160,7 +171,8 @@ export const api = {
     let res: Response;
     try {
       res = await fetch('/api/account/vendor-applications', {
-        headers: { Authorization: `Bearer ${accessToken}` }
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: 'no-store'
       });
     } catch {
       throw new Error('Could not reach the account service. Check your connection and try again.');
@@ -184,19 +196,7 @@ export const api = {
     if (response.success !== true || !Array.isArray(response.applications)) {
       throw new Error('The account service returned an unexpected response. Please try again.');
     }
-    return data as {
-      success: true;
-      applications: Array<{
-        id: string;
-        business_name: string;
-        market_area: string;
-        neighborhood: string;
-        business_type: string;
-        status: string;
-        created_at: string;
-        review_reason: string | null;
-      }>;
-    };
+    return data as { success: true; applications: VendorApplication[] };
   },
 
   async getAdminVendorApplications(accessToken: string, options: { status?: string; search?: string } = {}) {
@@ -237,6 +237,14 @@ export const api = {
   }) {
     const res = await fetch('/api/customer/orders', { method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     return await readAdminJson<{ success: true; order: { id: string; orderReference: string; totalNgn: number; isTestOrder: boolean; created: boolean } }>(res, 'Could not place the order.');
+  },
+
+  async startFlutterwaveTestCheckout(accessToken: string, payload: {
+    customerName: string; customerPhone: string; customerEmail: string; fulfillmentMethod: 'pickup' | 'vendor_delivery'; deliveryAddress: string | null;
+    items: Array<{ menuItemId: string; quantity: number; expectedPriceNgn: number }>; expectedDeliveryFeeNgn: number | null; idempotencyKey: string;
+  }) {
+    const res = await fetch('/api/customer/orders/flutterwave-test', { method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    return await readAdminJson<{ success: true; checkoutUrl: string; orderReference: string; isTestOrder: true }>(res, 'Could not start the Flutterwave test checkout.');
   },
 
   async getCustomerOrderAttempt(accessToken: string, idempotencyKey: string) {

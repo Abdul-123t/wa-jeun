@@ -166,7 +166,7 @@ export const LegalPage: React.FC = () => {
                 wá jẹun Privacy Policy
               </h2>
               <p className="text-xs text-slate-500 mt-1">
-                Effective: October 2026 · Market: Ijebu Ode, Ogun State, Nigeria
+                Effective: October 2026 · Markets: Ijebu Ode and Ijagun, Ogun State, Nigeria
               </p>
             </div>
 
@@ -179,7 +179,7 @@ export const LegalPage: React.FC = () => {
                   During our pre-launch phase, wá jẹun collects only information voluntarily submitted through our Customer Early Access, Food Business Onboarding Interest, or Contact forms:
                 </p>
                 <ul className="list-disc pl-5 space-y-1 text-xs">
-                  <li><strong>Customer Launch List:</strong> Full name, contact channel (WhatsApp/Phone or Email), neighborhood in Ijebu Ode, and optional food preferences.</li>
+                  <li><strong>Customer Launch Updates:</strong> Full name, contact channel (WhatsApp/Phone or Email), selected market area and neighborhood in Ijebu Ode or Ijagun, and optional food preferences.</li>
                   <li><strong>Food Business Applications:</strong> Business/buka name, manager/contact name, business phone/WhatsApp, business location/neighborhood, business category, current ordering channels, and fulfillment arrangements.</li>
                   <li><strong>General Inquiries:</strong> Name, contact detail, and inquiry text.</li>
                 </ul>

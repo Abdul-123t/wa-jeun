@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express, { ErrorRequestHandler, Request, RequestHandler, Response } from 'express';
+import { randomUUID } from 'node:crypto';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import {
@@ -35,6 +36,11 @@ import {
   deleteVendorMenuItem,
   uploadVendorMenuImage,
   createCustomerOrder,
+  prepareFlutterwaveTestPayment,
+  saveFlutterwaveTestCheckoutUrl,
+  failFlutterwaveTestPaymentInitialization,
+  getFlutterwaveTestPayment,
+  completeFlutterwaveTestPayment,
   getCustomerOrderAttempt,
   getCustomerOrders,
   getVendorOrders,
@@ -45,6 +51,7 @@ import { FULFILLMENT_OPTIONS, MENU_CATEGORIES, isTrustedMenuImageUrl, validateMe
 import { createOrderRequestFingerprint, parseCheckoutLines, validateCheckoutContact, validateFulfillment } from './src/server/orderRules';
 import { isProductionRuntime } from './src/server/runtimeMode';
 import { isMarketAreaId } from './src/data/marketAreas';
+import { classifyFlutterwaveReplay, initializeFlutterwaveStandard, isFlutterwaveReference, isFlutterwaveTestMode, validateVerifiedFlutterwaveTransaction, verifyFlutterwaveTransaction, verifyFlutterwaveWebhookHash } from './src/server/flutterwave';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -106,6 +113,7 @@ const createSubmissionLimiter = (key: string) => createRateLimiter({
   message: 'Too many submissions from this connection. Please wait a few minutes before trying again.'
 });
 const customerOrderLimiter = createSubmissionLimiter('customer-orders');
+const flutterwaveTestCheckoutLimiter = createSubmissionLimiter('flutterwave-test-checkout');
 const customerInterestLimiter = createSubmissionLimiter('customer-interest');
 const vendorApplicationLimiter = createSubmissionLimiter('vendor-applications');
 const contactInquiryLimiter = createSubmissionLimiter('contact-inquiries');
@@ -253,6 +261,118 @@ app.post('/api/customer/orders', customerOrderLimiter, asyncRoute(async (req: Re
     idempotencyKey: req.body.idempotencyKey, requestFingerprint: fingerprint, expectedDeliveryFeeNgn: expectedFee, isTestOrder: true });
   if (!result.success) return res.status(result.statusCode || 503).json({ success: false, error: result.error });
   return res.status(result.data.created ? 201 : 200).json({ success: true, order: result.data });
+}));
+
+app.post('/api/customer/orders/flutterwave-test', flutterwaveTestCheckoutLimiter, asyncRoute(async (req: Request, res: Response) => {
+  res.set('Cache-Control', 'no-store');
+  const authorization = await verifiedCustomerUser(req);
+  if (!authorization.userId) return res.status(authorization.statusCode || 401).json({ success: false, error: authorization.error });
+  if (!isDevelopment || !isFlutterwaveTestMode()) return res.status(503).json({ success: false, error: 'Flutterwave sandbox checkout is available only in a configured local development environment.' });
+
+  const lines = parseCheckoutLines(req.body?.items);
+  if (!lines.success) return res.status(400).json({ success: false, error: lines.error });
+  const contact = validateCheckoutContact(req.body?.customerName, req.body?.customerPhone);
+  if (!contact.success) return res.status(400).json({ success: false, error: contact.error });
+  const customerEmail = typeof req.body?.customerEmail === 'string' ? normalizeEmail(req.body.customerEmail) : null;
+  if (!customerEmail) return res.status(400).json({ success: false, error: 'Enter a valid email address for Flutterwave test checkout.' });
+  const fulfillment = validateFulfillment(req.body?.fulfillmentMethod, req.body?.deliveryAddress, ['pickup_only', 'vendor_delivery', 'pickup_and_delivery']);
+  if (!fulfillment.success) return res.status(400).json({ success: false, error: fulfillment.error });
+  if (typeof req.body?.idempotencyKey !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(req.body.idempotencyKey)) return res.status(400).json({ success: false, error: 'Refresh checkout and try again.' });
+  if (typeof req.body?.expectedDeliveryFeeNgn !== 'number' && req.body?.expectedDeliveryFeeNgn !== null) return res.status(400).json({ success: false, error: 'Refresh checkout and review the delivery fee.' });
+  const expectedFee = fulfillment.fulfillmentMethod === 'pickup' ? null : req.body.expectedDeliveryFeeNgn;
+  if (expectedFee !== null && (!Number.isFinite(expectedFee) || expectedFee < 0 || expectedFee > 10000000 || Math.round(expectedFee * 100) !== expectedFee * 100)) return res.status(400).json({ success: false, error: 'Refresh checkout and review the delivery fee.' });
+  if (fulfillment.fulfillmentMethod === 'vendor_delivery' && expectedFee === null) return res.status(400).json({ success: false, error: 'This business has not configured a delivery fee. Choose pickup or contact the business.' });
+
+  const fingerprint = createOrderRequestFingerprint({ customerUserId: authorization.userId, customerName: contact.customerName, customerPhone: contact.customerPhone,
+    fulfillmentMethod: fulfillment.fulfillmentMethod as 'pickup' | 'vendor_delivery', deliveryAddress: fulfillment.deliveryAddress, expectedDeliveryFeeNgn: expectedFee,
+    lines: lines.lines as Array<{ menuItemId: string; quantity: number; expectedPriceNgn: number }> });
+  const order = await createCustomerOrder({ customerUserId: authorization.userId, customerName: contact.customerName, customerPhone: contact.customerPhone,
+    fulfillmentMethod: fulfillment.fulfillmentMethod as 'pickup' | 'vendor_delivery', deliveryAddress: fulfillment.deliveryAddress, lines: lines.lines,
+    idempotencyKey: req.body.idempotencyKey, requestFingerprint: fingerprint, expectedDeliveryFeeNgn: expectedFee, isTestOrder: true });
+  if (!order.success) return res.status(order.statusCode || 503).json({ success: false, error: order.error });
+
+  const txRef = `WJTEST-${randomUUID()}`;
+  const prepared = await prepareFlutterwaveTestPayment(order.data.id, authorization.userId, txRef, customerEmail);
+  if (!prepared.success) return res.status(prepared.statusCode || 503).json({ success: false, error: prepared.error });
+  if (prepared.data.status === 'successful') return res.status(409).json({ success: false, error: 'This sandbox order has already been paid. Check your order history.' });
+  if (prepared.data.status === 'initializing') return res.status(409).json({ success: false, error: 'Sandbox checkout is already being prepared. Retry shortly.' });
+  if (prepared.data.checkoutUrl) return res.json({ success: true, checkoutUrl: prepared.data.checkoutUrl, orderReference: order.data.orderReference, isTestOrder: true });
+
+  let callbackUrl: string;
+  try { callbackUrl = new URL('/api/payments/flutterwave/callback', process.env.APP_URL || 'http://localhost:3000').toString(); }
+  catch { await failFlutterwaveTestPaymentInitialization(prepared.data.txRef); return res.status(503).json({ success: false, error: 'Sandbox callback URL is not configured.' }); }
+  try {
+    const hosted = await initializeFlutterwaveStandard({ txRef: prepared.data.txRef, amountNgn: prepared.data.amountNgn,
+      customerName: contact.customerName, customerEmail, customerPhone: contact.customerPhone, redirectUrl: callbackUrl });
+    const saved = await saveFlutterwaveTestCheckoutUrl(prepared.data.txRef, hosted.link);
+    if (!saved.success) {
+      await failFlutterwaveTestPaymentInitialization(prepared.data.txRef);
+      return res.status(saved.statusCode || 503).json({ success: false, error: saved.error });
+    }
+    return res.json({ success: true, checkoutUrl: hosted.link, orderReference: order.data.orderReference, isTestOrder: true });
+  } catch {
+    await failFlutterwaveTestPaymentInitialization(prepared.data.txRef);
+    console.error('[WA JEUN API] Flutterwave sandbox initialization failed.', { category: 'flutterwave_test_initialization' });
+    return res.status(502).json({ success: false, error: 'Flutterwave could not start the test checkout. The order remains unpaid.' });
+  }
+}));
+
+async function verifyAndStoreFlutterwaveResult(txRef: string, transactionId: string) {
+  const stored = await getFlutterwaveTestPayment(txRef);
+  if (!stored.success) return stored;
+  const transaction = await verifyFlutterwaveTransaction(transactionId);
+  const validation = validateVerifiedFlutterwaveTransaction(transaction, { txRef: stored.data.txRef, amountNgn: stored.data.amountNgn, currency: stored.data.currency });
+  if (!validation.success && !['amount_mismatch', 'currency_mismatch'].includes(validation.reason)) {
+    return { success: false as const, statusCode: 409, error: 'The verified transaction does not match this sandbox checkout.' };
+  }
+  const replay = classifyFlutterwaveReplay({ status: stored.data.status, transactionId: stored.data.transactionId }, transaction.id);
+  if (replay === 'duplicate') return { success: true as const, orderId: stored.data.orderId, status: stored.data.status };
+  if (replay === 'conflict') return { success: false as const, statusCode: 409, error: 'This sandbox payment reference is already closed.' };
+  const result = await completeFlutterwaveTestPayment({ txRef: stored.data.txRef, transactionId: transaction.id,
+    status: transaction.status as 'successful' | 'failed' | 'cancelled', amountNgn: transaction.amount, currency: transaction.currency });
+  if (!result.success) return result;
+  return { success: true as const, orderId: stored.data.orderId, status: result.data.status };
+}
+
+function checkoutReturnUrl(payment: 'return' | 'unavailable', orderReference?: string) {
+  const target = new URL('/orders', process.env.APP_URL || 'http://localhost:3000');
+  target.searchParams.set('payment', payment);
+  if (orderReference) target.searchParams.set('placed', orderReference);
+  return target.toString();
+}
+
+app.get('/api/payments/flutterwave/callback', asyncRoute(async (req: Request, res: Response) => {
+  res.set('Cache-Control', 'no-store');
+  if (!isDevelopment || !isFlutterwaveTestMode()) return res.status(503).json({ success: false, error: 'Sandbox payment callbacks are disabled outside local development.' });
+  const txRef = req.query.tx_ref;
+  const transactionId = req.query.transaction_id;
+  if (!isFlutterwaveReference(txRef) || typeof transactionId !== 'string' || !/^\d{1,20}$/.test(transactionId)) return res.redirect(303, checkoutReturnUrl('unavailable'));
+  const stored = await getFlutterwaveTestPayment(txRef);
+  if (!stored.success) return res.redirect(303, checkoutReturnUrl('unavailable'));
+  try {
+    await verifyAndStoreFlutterwaveResult(txRef, transactionId);
+    return res.redirect(303, checkoutReturnUrl('return', stored.data.orderReference));
+  } catch {
+    console.error('[WA JEUN API] Flutterwave callback verification failed.', { category: 'flutterwave_test_callback' });
+    return res.redirect(303, checkoutReturnUrl('return', stored.data.orderReference));
+  }
+}));
+
+app.post('/api/payments/flutterwave/webhook', asyncRoute(async (req: Request, res: Response) => {
+  if (!isDevelopment || !isFlutterwaveTestMode()) return res.status(503).end();
+  if (!verifyFlutterwaveWebhookHash(req.get('verif-hash'), process.env.FLW_SECRET_HASH)) return res.status(401).end();
+  const rawId = req.body?.data?.id;
+  const transactionId = typeof rawId === 'number' && Number.isSafeInteger(rawId) ? String(rawId) : typeof rawId === 'string' ? rawId : '';
+  const txRef = req.body?.data?.tx_ref;
+  if (!isFlutterwaveReference(txRef) || !/^\d{1,20}$/.test(transactionId)) return res.status(200).json({ received: true });
+  try {
+    const result = await verifyAndStoreFlutterwaveResult(txRef, transactionId);
+    if (!result.success && result.statusCode === 503) return res.status(503).json({ received: false });
+    return res.status(200).json({ received: true });
+  } catch {
+    console.error('[WA JEUN API] Flutterwave webhook verification failed.', { category: 'flutterwave_test_webhook' });
+    return res.status(503).json({ received: false });
+  }
 }));
 
 app.get('/api/vendor/orders', asyncRoute(async (req: Request, res: Response) => {

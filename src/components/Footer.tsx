@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, MapPin, Share2 } from 'lucide-react';
+import { ArrowUpRight, MapPin, Play, Share2 } from 'lucide-react';
 import { FooterIllustrations } from './FooterIllustrations';
+import { requestIntroReplay } from './introSession';
 
 type FooterProps = { onOpenShare?: () => void };
 
@@ -41,10 +42,13 @@ export const Footer: React.FC<FooterProps> = ({ onOpenShare }) => {
         {onOpenShare && <button type="button" onClick={onOpenShare} className="footer-action mt-3 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B8D94B] focus-visible:ring-offset-4 focus-visible:ring-offset-[#123B2A]">
           <Share2 className="h-4 w-4" aria-hidden="true" />Share wá jẹun
         </button>}
+        <button type="button" onClick={requestIntroReplay} className="footer-action mt-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B8D94B] focus-visible:ring-offset-4 focus-visible:ring-offset-[#123B2A]">
+          <Play className="h-4 w-4" aria-hidden="true" />Replay intro
+        </button>
       </div>
 
       <FooterNav title="Explore" className="lg:col-span-2" links={[
-        ['Explore Food', '/explore'], ['Join the Launch List', '/customer-register'], ['About wá jẹun', '/about'],
+        ['Explore Food', '/explore'], ['Notify Me When Ordering Opens', '/customer-register'], ['About wá jẹun', '/about'],
       ]} />
 
       <div className="lg:col-span-3">

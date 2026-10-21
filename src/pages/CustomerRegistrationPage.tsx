@@ -143,7 +143,7 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
               <span>Your details</span>
             </div>
             <p className="leading-relaxed">
-              Your interest is recorded for <strong>{neighborhood === 'Other Neighborhood in Ijebu Ode' ? customNeighborhood : neighborhood}</strong>. Your selected contact channel is <strong>{contactMethod === 'phone' ? 'WhatsApp/Phone' : 'Email'}</strong>.
+              Your interest is recorded for <strong>{MARKET_AREAS.find(area => area.id === marketArea)?.label || marketArea}</strong>, in <strong>{neighborhood === 'Other Neighborhood in Ijebu Ode' ? customNeighborhood : neighborhood}</strong>. Your selected contact channel is <strong>{contactMethod === 'phone' ? 'WhatsApp/Phone' : 'Email'}</strong>.
             </p>
             {successData.registrationId && (
               <p className="text-[11px] text-slate-500 pt-2 border-t border-[#123B2A]/10 font-mono">
@@ -184,22 +184,22 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
         <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-[#20231F]/60">
           <Link to="/" className="hover:text-[#123B2A] transition-colors">Home</Link>
           <span className="text-slate-400">/</span>
-          <span className="text-[#123B2A] font-semibold">Customer Launch List</span>
+          <span className="text-[#123B2A] font-semibold">Ordering Updates</span>
         </nav>
 
         {/* Header */}
         <div className="text-center space-y-3">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#123B2A]/5 text-[#123B2A] text-xs font-semibold">
             <MapPin className="w-3.5 h-3.5 text-[#123B2A]" />
-            <span>Ijebu Ode & Ijagun Customer Early Access</span>
+            <span>Ordering Updates · Ijebu Ode & Ijagun</span>
           </div>
 
           <h1 className="font-display text-3xl sm:text-4xl font-extrabold text-[#123B2A] tracking-tight">
-            Be first in line for good food.
+            Get notified when ordering opens.
           </h1>
 
           <p className="text-sm sm:text-base text-[#20231F]/80 max-w-lg mx-auto leading-relaxed">
-            Register your interest in wá jẹun and hear when local food discovery and ordering become available in Ijebu Ode and Ijagun.
+            Sign up for launch updates. We’ll contact you when food discovery and ordering are available in your selected area. No account is required.
           </p>
           <p className="text-sm text-[#20231F]/65">
             No account needed. <Link to="/auth?mode=signup" className="font-semibold text-[#123B2A] underline underline-offset-2">Create an account</Link> or <Link to="/auth?mode=signin" className="font-semibold text-[#123B2A] underline underline-offset-2">sign in</Link> to use the marketplace.
@@ -292,7 +292,7 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
                   }`}
                 />
                 <p className="text-[11px] text-slate-500">
-                  We'll only message you about the wá jẹun rollout in Ijebu Ode.
+                  We’ll only message you about the wá jẹun rollout in your selected area.
                 </p>
                 {fieldErrors.phone && (
                   <p role="alert" className="text-xs text-red-600 font-medium">{fieldErrors.phone}</p>
@@ -378,7 +378,7 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
                   <Link to="/legal?tab=privacy" target="_blank" className="font-semibold text-[#123B2A] underline">
                     Privacy Notice
                   </Link>{' '}
-                  and consent to being contacted about the launch in Ijebu Ode.
+                  and consent to being contacted about the wá jẹun launch in Ijebu Ode or Ijagun.
                 </span>
               </label>
               {fieldErrors.consent && (
@@ -400,7 +400,7 @@ export const CustomerRegistrationPage: React.FC<CustomerRegistrationPageProps> =
                   </>
                 ) : (
                   <>
-                    <span>Join the Launch List</span>
+                    <span>Notify Me When Ordering Opens</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}

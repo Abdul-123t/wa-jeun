@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { Session, SupabaseClient, User } from '@supabase/supabase-js';
 import { supabaseBrowser } from '../services/supabaseBrowser';
-import { api } from '../services/api';
+import { api, type VendorApplication } from '../services/api';
 
 type AuthContextValue = {
   client: SupabaseClient | null;
@@ -10,7 +10,8 @@ type AuthContextValue = {
   loading: boolean;
   adminUserId: string | null;
   adminPermissionError: string | null;
-  vendorUserId: string | null;
+  vendorApplications: VendorApplication[];
+  vendorApplicationError: string | null;
   permissionsLoading: boolean;
   retryPermissionCheck: () => void;
   signOut: () => Promise<{ error: string | null }>;
@@ -23,13 +24,15 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const [loading, setLoading] = useState(true);
   const [adminUserId, setAdminUserId] = useState<string | null>(null);
   const [adminPermissionError, setAdminPermissionError] = useState<string | null>(null);
-  const [vendorUserId, setVendorUserId] = useState<string | null>(null);
+  const [vendorApplications, setVendorApplications] = useState<VendorApplication[]>([]);
+  const [vendorApplicationError, setVendorApplicationError] = useState<string | null>(null);
   const [permissionsLoading, setPermissionsLoading] = useState(true);
   const [permissionCheckVersion, setPermissionCheckVersion] = useState(0);
 
   useEffect(() => {
     if (!supabaseBrowser) {
       setLoading(false);
+      setPermissionsLoading(false);
       return;
     }
 
@@ -67,13 +70,14 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     const accessToken = session?.access_token;
     setAdminUserId(null);
     setAdminPermissionError(null);
-    setVendorUserId(null);
+    setVendorApplications([]);
+    setVendorApplicationError(null);
     if (!userId || !accessToken) {
       setPermissionsLoading(false);
       return () => { active = false; };
     }
     setPermissionsLoading(true);
-    const verifyAdminAccess = async () => {
+    const getCurrentAccessToken = async () => {
       // Ask Supabase for its current session immediately before sending the
       // bearer token. This refreshes a near-expiry session and prevents a
       // stale token snapshot from being treated as a membership denial.
@@ -81,11 +85,12 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       if (error || !data.session || data.session.user.id !== userId) {
         throw new Error('Your sign-in session could not be refreshed. Please sign in again and retry.');
       }
-      return api.getAdminAccess(data.session.access_token);
+      return data.session.access_token;
     };
+    const currentAccessToken = getCurrentAccessToken();
     void Promise.allSettled([
-      verifyAdminAccess(),
-      api.getMyVendorApplications(accessToken).then(result => result.applications.length > 0)
+      currentAccessToken.then(token => api.getAdminAccess(token)),
+      currentAccessToken.then(token => api.getMyVendorApplications(token))
     ]).then(([adminResult, vendorResult]) => {
       if (!active) return;
       if (adminResult.status === 'fulfilled' && adminResult.value) setAdminUserId(userId);
@@ -94,7 +99,10 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
           ? adminResult.reason.message
           : 'Administrator access could not be verified.');
       }
-      if (vendorResult.status === 'fulfilled' && vendorResult.value) setVendorUserId(userId);
+      if (vendorResult.status === 'fulfilled') setVendorApplications(vendorResult.value.applications);
+      else setVendorApplicationError(vendorResult.reason instanceof Error
+        ? vendorResult.reason.message
+        : 'Your applications could not be loaded. Please try again.');
       setPermissionsLoading(false);
     });
     return () => { active = false; };
@@ -119,11 +127,12 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     loading,
     adminUserId,
     adminPermissionError,
-    vendorUserId,
+    vendorApplications,
+    vendorApplicationError,
     permissionsLoading,
     retryPermissionCheck,
     signOut
-  }), [session, loading, adminUserId, adminPermissionError, vendorUserId, permissionsLoading]);
+  }), [session, loading, adminUserId, adminPermissionError, vendorApplications, vendorApplicationError, permissionsLoading]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

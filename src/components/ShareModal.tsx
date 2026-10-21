@@ -13,7 +13,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
 
   const shareUrl = window.location.origin;
   const shareTitle = "wá jẹun — Your City. Your Food.";
-  const shareText = "wá jẹun is preparing the first local food discovery marketplace in Ijebu Ode! Join the launch list or register your food business:";
+  const shareText = "wá jẹun is preparing a local food discovery marketplace for Ijebu Ode and Ijagun. Sign up for updates when ordering opens, or register your food business:";
 
   const handleCopy = async () => {
     try {
@@ -57,7 +57,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
 
         <div className="p-6 space-y-5">
           <p className="text-sm text-[#20231F]/80 leading-relaxed">
-            Help bring your favorite food spots in Ijebu Ode onto wá jẹun. Share the launch list with your friends, family, and local food vendors.
+            Help bring your favorite food spots in Ijebu Ode and Ijagun onto wá jẹun. Share the ordering updates signup with friends, family, and local food businesses.
           </p>
 
           <div className="grid grid-cols-3 gap-3">

@@ -1,6 +1,6 @@
 export const MARKET_AREAS = [
   { id: 'ijebu-ode', name: 'Ijebu Ode', label: 'Ijebu Ode' },
-  { id: 'ijagun', name: 'Ijagun', label: 'Ijagun (TASUED area)' }
+  { id: 'ijagun', name: 'Ijagun', label: 'Ijagun (TASFUED area)' }
 ] as const;
 
 export type MarketAreaId = typeof MARKET_AREAS[number]['id'];

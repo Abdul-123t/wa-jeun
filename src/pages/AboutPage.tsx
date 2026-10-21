@@ -23,8 +23,8 @@ export const AboutPage: React.FC = () => (
       <section className="mt-6 flex flex-col items-start justify-between gap-5 rounded-3xl bg-[#123B2A] p-6 text-white sm:flex-row sm:items-center sm:p-9">
         <div><h2 className="font-display text-2xl font-bold">Join wá jẹun in Ijebu.</h2><p className="mt-2 text-sm text-white/75">Get launch updates or bring your food business online.</p></div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-          <Link to="/customer-register" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#B8D94B] px-4 text-sm font-bold text-[#123B2A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">Join launch list <ArrowRight className="h-4 w-4" aria-hidden="true"/></Link>
-          <Link to="/vendor-register" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/30 px-4 text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">Become a vendor</Link>
+          <Link to="/customer-register" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#B8D94B] px-4 text-sm font-bold text-[#123B2A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">Notify Me When Ordering Opens <ArrowRight className="h-4 w-4" aria-hidden="true"/></Link>
+          <Link to="/vendor-register" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/30 px-4 text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">Become a Vendor</Link>
         </div>
       </section>
     </div>

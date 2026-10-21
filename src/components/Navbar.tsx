@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Menu, Store, X } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { isVerifiedMember } from '../auth/authRules';
+import { getRoleAwareNavigation } from '../auth/authRules';
 
 const publicLinks = [
   { label: 'Explore Food', to: '/explore' },
@@ -20,7 +20,8 @@ function isCurrentLink(pathname: string, search: string, hash: string, to: strin
 
 export const Navbar: React.FC = () => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const { user, loading, permissionsLoading, adminUserId, vendorUserId, signOut } = useAuth();
+  const [signOutError, setSignOutError] = useState('');
+  const { user, loading, permissionsLoading, adminUserId, vendorApplications, vendorApplicationError, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const toggleRef = useRef<HTMLButtonElement>(null);
@@ -67,11 +68,12 @@ export const Navbar: React.FC = () => {
   };
 
   const handleSignOut = async () => {
+    setSignOutError('');
     const result = await signOut();
     if (!result.error) {
       closeMenu();
       navigate('/', { replace: true });
-    }
+    } else setSignOutError(result.error);
   };
 
   const desktopLinkClass = (active: boolean) => [
@@ -100,11 +102,14 @@ export const Navbar: React.FC = () => {
     </Link>;
   };
 
-  const accountLinks = user ? [
-    { label: 'Account', to: '/account' },
-    ...(!permissionsLoading && isVerifiedMember(user.id, vendorUserId) ? [{ label: 'Vendor dashboard', to: '/vendor' }] : []),
-    ...(!permissionsLoading && isVerifiedMember(user.id, adminUserId) ? [{ label: 'Admin panel', to: '/admin' }] : []),
-  ] : [{ label: 'Sign in', to: '/auth?mode=signin' }];
+  const navigation = getRoleAwareNavigation({
+    userId: user?.id,
+    authLoading: loading,
+    permissionsLoading,
+    vendorApplications,
+    vendorApplicationError,
+    adminUserId
+  });
 
   return <header className="sticky top-0 z-40 border-b border-[#123B2A]/10 bg-[#FFF8E9] shadow-[0_3px_16px_-12px_rgba(18,59,42,.28)]" role="banner">
     <div className="mx-auto flex h-[64px] max-w-[1400px] items-center justify-between gap-3 px-4 sm:h-[70px] sm:px-6 lg:px-8">
@@ -121,13 +126,14 @@ export const Navbar: React.FC = () => {
       </nav>
 
       <div className="hidden shrink-0 items-center gap-2 min-[1360px]:flex">
-        {!loading && accountLinks.map(item => {
+        {navigation.accountLinks.map(item => {
           const active = isCurrentLink(location.pathname, location.search, location.hash, item.to);
           return <Link key={item.to} to={item.to} aria-current={active ? 'page' : undefined} className="rounded-md px-2.5 py-2 text-[13px] font-semibold text-[#123B2A] transition-colors hover:bg-[#123B2A]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]">{item.label}</Link>;
         })}
         {user && <button type="button" onClick={() => void handleSignOut()} className="rounded-md px-2 py-2 text-[13px] font-semibold text-[#20231F]/65 transition-colors hover:text-[#123B2A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]">Sign out</button>}
-        <Link to="/vendor-register" className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[#123B2A]/20 px-3 text-[13px] font-bold text-[#123B2A] transition-colors hover:border-[#123B2A]/50 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]">Become a Vendor</Link>
-        <Link to="/customer-register" className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-[#B8D94B] px-3.5 text-[13px] font-bold text-[#123B2A] shadow-sm transition-colors hover:bg-[#a9cc38] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A] focus-visible:ring-offset-2">Join launch list <ArrowRight size={15}/></Link>
+        {signOutError && <span role="alert" className="max-w-40 text-xs text-red-800">{signOutError}</span>}
+        {!loading && navigation.showVendorApplication && <Link to="/vendor-register" className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[#123B2A]/20 px-3 text-[13px] font-bold text-[#123B2A] transition-colors hover:border-[#123B2A]/50 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]">Become a Vendor</Link>}
+        {!loading && navigation.showCustomerLaunchList && <Link to="/customer-register" className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-[#B8D94B] px-3.5 text-[13px] font-bold text-[#123B2A] shadow-sm transition-colors hover:bg-[#a9cc38] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A] focus-visible:ring-offset-2">Notify Me When Ordering Opens <ArrowRight size={15}/></Link>}
       </div>
 
       <div className="flex shrink-0 items-center gap-1 min-[1360px]:hidden">
@@ -143,12 +149,13 @@ export const Navbar: React.FC = () => {
         {renderLink({ label: 'Home', to: '/' }, true)}
         {publicLinks.map(item => renderLink(item, true))}
         <div className="pb-2 pt-5"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-[#123B2A]/50">Your workspace</p></div>
-        {!loading && accountLinks.map(item => renderLink(item, true))}
+        {navigation.accountLinks.map(item => renderLink(item, true))}
         {user && <button type="button" onClick={() => void handleSignOut()} className="flex min-h-12 w-full items-center border-b border-[#123B2A]/10 px-1 text-left text-[15px] font-semibold text-[#20231F] hover:text-[#123B2A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]">Sign out</button>}
-        <div className="grid gap-2.5 pt-5">
-          <Link to="/vendor-register" onClick={closeMenu} className="flex min-h-12 items-center justify-center gap-2 rounded-lg border border-[#123B2A]/20 bg-white px-4 text-sm font-bold text-[#123B2A] transition-colors hover:border-[#123B2A]/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]"><Store size={17}/>Become a Vendor</Link>
-          <Link to="/customer-register" onClick={closeMenu} className="flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[#B8D94B] px-4 text-sm font-bold text-[#123B2A] shadow-sm transition-colors hover:bg-[#a9cc38] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]">Join the launch list <ArrowRight size={16}/></Link>
-        </div>
+        {signOutError && <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{signOutError}</p>}
+        {!loading && (navigation.showVendorApplication || navigation.showCustomerLaunchList) && <div className="grid gap-2.5 pt-5">
+          {navigation.showVendorApplication && <Link to="/vendor-register" onClick={closeMenu} className="flex min-h-12 items-center justify-center gap-2 rounded-lg border border-[#123B2A]/20 bg-white px-4 text-sm font-bold text-[#123B2A] transition-colors hover:border-[#123B2A]/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]"><Store size={17}/>Become a Vendor</Link>}
+          {navigation.showCustomerLaunchList && <Link to="/customer-register" onClick={closeMenu} className="flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[#B8D94B] px-4 text-sm font-bold text-[#123B2A] shadow-sm transition-colors hover:bg-[#a9cc38] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#123B2A]">Notify Me When Ordering Opens <ArrowRight size={16}/></Link>}
+        </div>}
       </nav>
     </div>}
   </header>;

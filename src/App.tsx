@@ -12,6 +12,7 @@ import { AuthProvider, useAuth } from './auth/AuthContext';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { CartProvider } from './services/CartContext';
 import { getAdminAccessViewState } from './auth/authRules';
+import { BrandIntro } from './components/BrandIntro';
 
 const HomePage = lazy(() => import('./pages/HomePage').then(module => ({ default: module.HomePage })));
 const ExplorePage = lazy(() => import('./pages/ExplorePage').then(module => ({ default: module.ExplorePage })));
@@ -58,14 +59,14 @@ function RouteMetadata() {
     const tab = new URLSearchParams(location.search).get('tab');
     const privatePath = ['/account', '/vendor', '/admin', '/cart', '/orders'].some(path => location.pathname === path || location.pathname.startsWith(`${path}/`));
     let title = 'wá jẹun — Your City. Your Food. | Ijebu Ode and Ijagun Food Marketplace';
-    let description = 'Discover food around Ijebu Ode and Ijagun with wá jẹun. Connect with local food businesses, explore authentic Nigerian meals, and join the launch list.';
+    let description = 'Discover food around Ijebu Ode and Ijagun with wá jẹun. Connect with local food businesses, explore authentic Nigerian meals, and get notified when ordering opens.';
 
     if (location.pathname === '/explore') {
       title = 'Explore Local Food | wá jẹun';
       description = 'Discover Ijebu Ode and Ijagun food businesses and Nigerian menus with wá jẹun, built in Ijebu for the local community.';
     } else if (location.pathname === '/customer-register') {
-      title = 'Join the Customer Launch List | wá jẹun';
-      description = 'Join the wá jẹun customer launch list for updates on local food discovery and ordering in Ijebu Ode.';
+      title = 'Ordering Updates | wá jẹun';
+      description = 'Sign up for wá jẹun launch updates and hear when food discovery and ordering become available in your selected area.';
     } else if (location.pathname === '/vendor-register') {
       title = 'Register Your Food Business | wá jẹun';
       description = 'Register your restaurant, buka, grill, bakery, or food business in Ijebu Ode or Ijagun with wá jẹun.';
@@ -117,6 +118,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <BrandIntro>
       <AuthProvider>
       <CartProvider>
       <div className="flex flex-col min-h-screen bg-[#FFF8E9] text-[#20231F] selection:bg-[#B8D94B] selection:text-[#123B2A]">
@@ -163,6 +165,7 @@ export default function App() {
       </div>
       </CartProvider>
       </AuthProvider>
+      </BrandIntro>
     </BrowserRouter>
   );
 }
