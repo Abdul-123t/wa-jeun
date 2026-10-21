@@ -9,10 +9,10 @@
     "build": "npm run clean && vite build && npm run build:server",
     "build:server": "esbuild server.ts --bundle --platform=node --format=esm --target=node20 --packages=external --outfile=dist/server.js",
     "preview": "npm start",
-    "test:production": "npm run build && node tests/production-smoke.mjs",
+    "test:production": "npm run build && node tests/vercel-esm-resolution.test.mjs && node tests/production-smoke.mjs",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "node --import tsx tests/api.test.ts"
+    "test": "node --import tsx tests/api.test.ts && node tests/vercel-esm-resolution.test.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

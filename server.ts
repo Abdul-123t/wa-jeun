@@ -11,9 +11,9 @@ import {
   VALID_BUSINESS_TYPES,
   VALID_FULFILLMENT_OPTIONS,
   VALID_ORDERING_METHODS
-} from './src/server/validation';
-import { createRateLimiter } from './src/server/rateLimiter';
-import { configureClientIpTrust } from './src/server/clientIp';
+} from './src/server/validation.js';
+import { createRateLimiter } from './src/server/rateLimiter.js';
+import { configureClientIpTrust } from './src/server/clientIp.js';
 import {
   insertCustomerInterest,
   insertVendorInterest,
@@ -45,13 +45,13 @@ import {
   getCustomerOrders,
   getVendorOrders,
   transitionVendorOrder
-} from './src/server/db';
-import { authorizeAdminHeader, parseBearerAuthorization } from './src/server/authTokens';
-import { FULFILLMENT_OPTIONS, MENU_CATEGORIES, isTrustedMenuImageUrl, validateMenuItem, validateOpeningHours } from './src/server/vendorRules';
-import { createOrderRequestFingerprint, parseCheckoutLines, validateCheckoutContact, validateFulfillment } from './src/server/orderRules';
-import { isProductionRuntime } from './src/server/runtimeMode';
-import { isMarketAreaId } from './src/data/marketAreas';
-import { classifyFlutterwaveReplay, initializeFlutterwaveStandard, isFlutterwaveReference, isFlutterwaveTestMode, validateVerifiedFlutterwaveTransaction, verifyFlutterwaveTransaction, verifyFlutterwaveWebhookHash } from './src/server/flutterwave';
+} from './src/server/db.js';
+import { authorizeAdminHeader, parseBearerAuthorization } from './src/server/authTokens.js';
+import { FULFILLMENT_OPTIONS, MENU_CATEGORIES, isTrustedMenuImageUrl, validateMenuItem, validateOpeningHours } from './src/server/vendorRules.js';
+import { createOrderRequestFingerprint, parseCheckoutLines, validateCheckoutContact, validateFulfillment } from './src/server/orderRules.js';
+import { isProductionRuntime } from './src/server/runtimeMode.js';
+import { isMarketAreaId } from './src/data/marketAreas.js';
+import { classifyFlutterwaveReplay, initializeFlutterwaveStandard, isFlutterwaveReference, isFlutterwaveTestMode, validateVerifiedFlutterwaveTransaction, verifyFlutterwaveTransaction, verifyFlutterwaveWebhookHash } from './src/server/flutterwave.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
